@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>급식 캘린더</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  :root {
+    --bg: #f3f4f6;
+    --surface: #ffffff;
+    --surface-2: #f9fafb;
+    --surface-3: #f1f2f4;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #111827;
+    --text-2: #4b5563;
+    --muted: #9ca3af;
+    --primary: #1f2937;
+    --primary-hover: #0b1220;
+    --focus: #6b7fd7;
+    --danger: #e11d48;
+    --danger-bg: #fff1f3;
+    --notice: #d97706;
+    --notice-bg: #fff8eb;
+    --star: #f5b301;
+    --sun: #e0484d;
+    --sat: #3b6fd8;
+    --ok: #16a34a;
+    --radius-lg: 18px;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --sh-xs: 0 1px 2px rgba(17, 24, 39, .04);
+    --sh-sm: 0 1px 2px rgba(17, 24, 39, .04), 0 2px 6px rgba(17, 24, 39, .05);
+    --sh-md: 0 6px 18px -4px rgba(17, 24, 39, .08), 0 2px 4px rgba(17, 24, 39, .04);
+    --sh-lg: 0 30px 60px -18px rgba(17, 24, 39, .35), 0 8px 20px -8px rgba(17, 24, 39, .12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 0 0, #ffffff 0, transparent 40%), radial-gradient(circle at 100% 0, #eef0f4 0, transparent 35%);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body.modal-open { overflow: hidden; }
+  button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, textarea, select { font: inherit; color: inherit; }
+  ul { list-style: none; }
+
+  /* ---------- Header ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255, 255, 255, .82);
+    backdrop-filter: saturate(160%) blur(14px);
+    -webkit-backdrop-filter: saturate(160%) blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1320px; margin: 0 auto; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand-logo {
+    width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+    background: linear-gradient(145deg, #2b3445, #111827);
+    display: grid; place-items: center; color: #fff;
+    box-shadow: 0 6px 14px -4px rgba(17, 24, 39, .45), inset 0 1px 0 rgba(255,255,255,.12);
+  }
+  .brand-text h1 { font-size: 17px; font-weight: 800; letter-spacing: -.3px; }
+  .brand-text p { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .authbar { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .auth-user {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 6px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); box-shadow: var(--sh-xs);
+    font-weight: 600; font-size: 13px;
+  }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 12px; font-weight: 700;
+    background: var(--surface-3); color: var(--text-2); border: 1px solid var(--border);
+  }
+  .avatar.admin { background: #111827; color: #fff; border-color: #111827; }
+  .role-tag { font-size: 11px; font-weight: 600; color: var(--muted); }
+
+  /* ---------- Buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 36px; padding: 0 14px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; white-space: nowrap;
+    transition: background .15s, box-shadow .15s, border-color .15s, transform .05s, color .15s;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 3px solid rgba(107, 127, 215, .35); outline-offset: 1px; }
+  .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 4px 10px -3px rgba(17, 24, 39, .45); }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-outline { background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--sh-xs); }
+  .btn-outline:hover { background: var(--surface-2); border-color: #c2c7d0; }
+  .btn-ghost { color: var(--text-2); }
+  .btn-ghost:hover { background: var(--surface-3); color: var(--text); }
+  .btn-notice { background: var(--notice-bg); color: #9a5300; border: 1px solid #f6dcaa; }
+  .btn-notice:hover { background: #fff1d6; }
+  .btn-block { width: 100%; height: 44px; font-size: 14px; }
+  .btn[disabled] { opacity: .55; cursor: not-allowed; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+    background: var(--surface); border: 1px solid var(--border); box-shadow: var(--sh-xs); color: var(--text-2);
+    transition: background .15s, color .15s;
+  }
+  .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+
+  /* ---------- Layout ---------- */
+  .app {
+    max-width: 1320px; margin: 0 auto; padding: 24px;
+    display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); box-shadow: var(--sh-md);
+  }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 16px 18px 12px;
+  }
+  .card-title { font-size: 14px; font-weight: 700; letter-spacing: -.2px; display: flex; align-items: center; gap: 8px; }
+  .card-sub { font-size: 12px; color: var(--muted); }
+  .card-body { padding: 0 18px 18px; }
+  .sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 92px; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px;
+  }
+  .stat-label { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+  .stat-value { font-size: 20px; font-weight: 800; letter-spacing: -.5px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .stat-value small { font-size: 12px; font-weight: 600; color: var(--text-2); margin-left: 2px; }
+
+  /* Allergy chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    height: 28px; padding: 0 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; color: var(--text-2);
+    background: var(--surface); border: 1px solid var(--border);
+    transition: all .15s;
+  }
+  .chip:hover { border-color: var(--border-strong); background: var(--surface-2); }
+  .chip .no { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .chip.active { background: var(--danger-bg); border-color: #fbc4cf; color: var(--danger); box-shadow: 0 2px 6px -2px rgba(225, 29, 72, .25); }
+  .chip.active .no { color: #f0718f; }
+  .filter-hint { font-size: 12px; color: var(--muted); margin-top: 12px; display: flex; align-items: center; gap: 6px; }
+  .link-btn { font-size: 12px; font-weight: 600; color: var(--text-2); padding: 4px 8px; border-radius: 6px; }
+  .link-btn:hover { background: var(--surface-3); color: var(--text); }
+
+  /* Notice list (sidebar) */
+  .notice-list { display: flex; flex-direction: column; gap: 8px; }
+  .notice-item {
+    text-align: left; width: 100%;
+    padding: 10px 12px; border-radius: var(--radius);
+    background: var(--notice-bg); border: 1px solid #f6e2bb;
+    transition: box-shadow .15s, transform .15s;
+  }
+  .notice-item:hover { box-shadow: var(--sh-sm); transform: translateY(-1px); }
+  .notice-item .n-date { font-size: 11.5px; font-weight: 700; color: var(--notice); }
+  .notice-item .n-body { font-size: 12.5px; color: var(--text-2); margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .empty-mini { font-size: 12.5px; color: var(--muted); padding: 12px; text-align: center; background: var(--surface-2); border: 1px dashed var(--border); border-radius: var(--radius); }
+
+  /* ---------- Calendar ---------- */
+  .cal-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 18px 20px; border-bottom: 1px solid var(--border);
+  }
+  .cal-title { display: flex; align-items: baseline; gap: 10px; }
+  .cal-title h2 { font-size: 24px; font-weight: 800; letter-spacing: -.6px; font-variant-numeric: tabular-nums; }
+  .cal-title span { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .cal-nav { display: flex; align-items: center; gap: 6px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface-2); font-size: 12px; color: var(--text-2); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.danger { background: var(--danger); }
+  .dot.today { background: var(--primary); }
+
+  .weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 10px 12px 0; }
+  .weekdays div { text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding: 6px 0; letter-spacing: .5px; }
+  .weekdays div:first-child { color: var(--sun); }
+  .weekdays div:last-child { color: var(--sat); }
+
+  .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; padding: 8px 12px 14px; position: relative; min-height: 420px; }
+  .day {
+    position: relative; min-height: 124px; padding: 10px 10px 8px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    display: flex; flex-direction: column; gap: 6px; cursor: pointer; text-align: left; overflow: hidden;
+    transition: box-shadow .18s, transform .18s, border-color .18s;
+  }
+  .day:hover { box-shadow: var(--sh-md); transform: translateY(-2px); border-color: var(--border-strong); }
+  .day:focus-visible { outline: 3px solid rgba(107, 127, 215, .35); outline-offset: 1px; }
+  .day.empty { background: transparent; border: 1px dashed transparent; cursor: default; box-shadow: none; transform: none; }
+  .day.no-meal { background: var(--surface-2); }
+  .day.no-meal .day-num { color: var(--muted); }
+  .day.today { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary), var(--sh-sm); }
+  .day.danger::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--danger); }
+  .day-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+  .day-num { font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; }
+  .day.sun .day-num { color: var(--sun); }
+  .day.sat .day-num { color: var(--sat); }
+  .day.today .day-num { background: var(--primary); color: #fff; }
+  .day-icons { display: flex; align-items: center; gap: 4px; }
+  .notice-badge {
+    display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px;
+    background: var(--notice-bg); color: var(--notice); border: 1px solid #f6dcaa;
+  }
+  .warn-badge { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: var(--danger-bg); color: var(--danger); font-size: 11px; font-weight: 800; border: 1px solid #fbd0d9; }
+  .day-menu { display: flex; flex-direction: column; gap: 1px; flex: 1; min-height: 0; }
+  .day-menu li { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .day-menu li.warn { color: var(--danger); font-weight: 600; }
+  .day-menu li.more { color: var(--muted); font-size: 11px; }
+  .day-foot { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: auto; }
+  .kcal { font-size: 11px; font-weight: 700; color: var(--text-2); background: var(--surface-3); padding: 2px 7px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+  .mini-rate { font-size: 11px; font-weight: 700; color: var(--text-2); display: flex; align-items: center; gap: 2px; }
+  .mini-rate b { color: var(--star); }
+  .no-meal-label { font-size: 11.5px; color: var(--muted); margin-top: auto; }
+
+  .loading-overlay {
+    position: absolute; inset: 0; display: none; place-items: center; z-index: 2;
+    background: rgba(255, 255, 255, .6); border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+  .loading .loading-overlay { display: grid; }
+  .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--primary); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- Modal ---------- */
+  .modal {
+    position: fixed; inset: 0; z-index: 100; display: none;
+    align-items: center; justify-content: center; padding: 20px;
+    background: rgba(17, 24, 39, .38);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .modal.open { display: flex; animation: fadeIn .18s ease-out; }
+  .modal-panel {
+    width: 100%; max-width: 420px; max-height: calc(100vh - 40px);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    box-shadow: var(--sh-lg); display: flex; flex-direction: column; overflow: hidden;
+    animation: popIn .22s cubic-bezier(.2, .9, .3, 1.2);
+  }
+  .modal-panel.wide { max-width: 640px; }
+  .modal-panel.mid { max-width: 520px; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes popIn { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+  .modal-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 20px 22px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2);
+  }
+  .modal-head h3 { font-size: 18px; font-weight: 800; letter-spacing: -.4px; }
+  .modal-head p { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .modal-body { padding: 20px 22px 22px; overflow-y: auto; }
+  .modal-close { flex-shrink: 0; }
+
+  /* Tabs */
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; gap: 4px; background: var(--surface-3); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 18px; }
+  .tab { height: 36px; border-radius: 9px; font-weight: 700; font-size: 13px; color: var(--text-2); transition: all .15s; }
+  .tab.active { background: var(--surface); color: var(--text); box-shadow: var(--sh-sm); }
+
+  /* Forms */
+  .form { display: flex; flex-direction: column; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12.5px; font-weight: 700; color: var(--text-2); }
+  .field .opt { font-weight: 500; color: var(--muted); }
+  .input, .textarea {
+    width: 100%; padding: 0 14px; height: 44px;
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: 11px;
+    box-shadow: inset 0 1px 2px rgba(17, 24, 39, .04);
+    transition: border-color .15s, box-shadow .15s; outline: none;
+  }
+  .textarea { height: auto; min-height: 76px; padding: 11px 14px; resize: vertical; line-height: 1.55; }
+  .input:focus, .textarea:focus { border-color: var(--focus); box-shadow: 0 0 0 4px rgba(107, 127, 215, .16); }
+  .input::placeholder, .textarea::placeholder { color: #b3b8c2; }
+  .form-error { display: none; font-size: 12.5px; color: var(--danger); background: var(--danger-bg); border: 1px solid #fbd0d9; padding: 9px 12px; border-radius: 10px; }
+  .form-error.show { display: block; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .help { font-size: 11.5px; color: var(--muted); }
+
+  /* Detail modal */
+  .detail-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--surface); border: 1px solid var(--border); color: var(--text-2); }
+  .pill.star b { color: var(--star); }
+  .pill.danger { background: var(--danger-bg); color: var(--danger); border-color: #fbd0d9; }
+  .section { margin-top: 22px; }
+  .section:first-child { margin-top: 0; }
+  .section-title { font-size: 13px; font-weight: 800; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .section-title .count { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+  .notice-box { padding: 14px 16px; border-radius: 14px; background: var(--notice-bg); border: 1px solid #f6dcaa; }
+  .notice-box-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 800; color: var(--notice); margin-bottom: 10px; }
+  .diff { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: stretch; }
+  .diff-col { background: rgba(255, 255, 255, .75); border: 1px solid #f3e1bd; border-radius: 10px; padding: 10px 12px; }
+  .diff-col .k { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+  .diff-col .v { font-size: 13px; white-space: pre-wrap; word-break: keep-all; }
+  .diff-col.old .v { color: var(--text-2); text-decoration: line-through; text-decoration-color: rgba(225, 29, 72, .45); }
+  .diff-col.new .v { font-weight: 700; }
+  .diff-arrow { display: grid; place-items: center; color: var(--notice); }
+  .notice-reason { margin-top: 10px; font-size: 12.5px; color: #7a4a06; }
+  .notice-reason b { font-weight: 800; }
+
+  .menu-list { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .menu-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 14px; border-top: 1px solid var(--border); background: var(--surface); }
+  .menu-row:first-child { border-top: none; }
+  .menu-row:nth-child(even) { background: var(--surface-2); }
+  .menu-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .menu-row.warn .menu-name { color: var(--danger); }
+  .menu-tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+  .atag { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: var(--surface-3); color: var(--text-2); border: 1px solid var(--border); white-space: nowrap; }
+  .atag.hit { background: var(--danger-bg); color: var(--danger); border-color: #fbd0d9; }
+  .empty-block { text-align: center; padding: 28px 16px; color: var(--muted); font-size: 13px; background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: 14px; }
+
+  .review-summary { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); margin-bottom: 12px; }
+  .review-avg { font-size: 30px; font-weight: 800; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+  .stars { color: #dfe2e7; letter-spacing: 1px; font-size: 15px; white-space: nowrap; }
+  .stars .on { color: var(--star); }
+  .review-list { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 2px; }
+  .review { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--sh-xs); }
+  .review-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .review-user { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; }
+  .review-user .avatar { width: 24px; height: 24px; font-size: 11px; }
+  .review-date { font-size: 11px; color: var(--muted); }
+  .review-text { font-size: 13.5px; color: var(--text-2); word-break: break-all; }
+
+  .review-form { margin-top: 14px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: var(--sh-sm); }
+  .star-picker { display: flex; align-items: center; gap: 2px; }
+  .star-btn { font-size: 28px; line-height: 1; color: #dfe2e7; padding: 2px; transition: transform .1s, color .1s; }
+  .star-btn:hover { transform: scale(1.12); }
+  .star-btn.on { color: var(--star); }
+  .star-label { margin-left: 10px; font-size: 12.5px; font-weight: 700; color: var(--text-2); }
+  .review-input-row { display: flex; gap: 8px; margin-top: 12px; }
+  .review-input-row .input { flex: 1; }
+  .login-prompt { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px dashed var(--border-strong); border-radius: 14px; background: var(--surface-2); font-size: 13px; color: var(--text-2); }
+
+  /* 공지 날짜 강조 / 제외·대체 메뉴 */
+  .day.has-notice { background: var(--notice-bg); border-color: #f6dcaa; }
+  .day.has-notice.today { border-color: var(--primary); }
+  .day-menu li.warn { font-weight: 800; }
+  .day-menu li.removed { text-decoration: line-through; text-decoration-color: rgba(225, 29, 72, .55); color: var(--muted); }
+  .day-menu li.added { color: #9a5300; font-weight: 700; }
+  .day-menu li.added.warn { color: var(--danger); }
+  .menu-row.removed { background: var(--surface-2) !important; }
+  .menu-row.removed .menu-name { text-decoration: line-through; text-decoration-color: rgba(225, 29, 72, .55); color: var(--muted); font-weight: 500; }
+  .menu-row.added { background: #fffaf0 !important; }
+  .menu-row.warn .menu-name { font-weight: 800; }
+  .state-tag { font-size: 10.5px; font-weight: 800; padding: 2px 6px; border-radius: 6px; white-space: nowrap; text-decoration: none; display: inline-block; }
+  .state-tag.removed { background: var(--surface-3); color: var(--muted); border: 1px solid var(--border); }
+  .state-tag.added { background: var(--notice-bg); color: #9a5300; border: 1px solid #f6dcaa; }
+  .diff-col .v ul { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+
+  /* 삭제 버튼 */
+  .btn-del {
+    height: 24px; padding: 0 8px; border-radius: 7px; font-size: 11.5px; font-weight: 700;
+    color: var(--danger); background: var(--danger-bg); border: 1px solid #fbd0d9; transition: background .15s;
+  }
+  .btn-del:hover { background: #ffe1e7; }
+  .btn-del[disabled] { opacity: .55; cursor: not-allowed; }
+  .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid #fbd0d9; height: 32px; font-size: 12.5px; }
+  .btn-danger:hover { background: #ffe1e7; }
+  .review-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .mine-tag { font-size: 10.5px; font-weight: 700; color: var(--text-2); background: var(--surface-3); border: 1px solid var(--border); padding: 1px 6px; border-radius: 6px; }
+
+  /* 관리자 식단 수정 구역 */
+  .admin-box { padding: 16px; border: 1px dashed #efc777; border-radius: 14px; background: #fffdf7; }
+  .check-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+  .check-item {
+    display: flex; align-items: center; gap: 9px; padding: 9px 11px; min-width: 0;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+    cursor: pointer; font-size: 13px; font-weight: 600; transition: background .15s, border-color .15s;
+  }
+  .check-item:hover { border-color: var(--border-strong); }
+  .check-item input { width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--danger); cursor: pointer; }
+  .check-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .check-item.checked { background: var(--danger-bg); border-color: #fbd0d9; }
+  .check-item.checked span { text-decoration: line-through; color: var(--muted); }
+
+  /* Toast */
+  .toast-wrap { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+  .toast {
+    display: flex; align-items: center; gap: 8px;
+    padding: 11px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;
+    background: #111827; color: #fff; box-shadow: var(--sh-lg);
+    animation: toastIn .25s ease-out;
+  }
+  .toast.error { background: var(--danger); }
+  .toast.success::before { content: '✓'; color: #4ade80; font-weight: 800; }
+  .toast.hide { opacity: 0; transform: translateY(6px); transition: all .25s; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1080px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: static; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  }
+  @media (max-width: 720px) {
+    .topbar-inner { padding: 12px 16px; }
+    .brand-text p { display: none; }
+    .app { padding: 16px; gap: 14px; }
+    .cal-head { padding: 14px 16px; }
+    .cal-title h2 { font-size: 20px; }
+    .legend { padding: 8px 16px; }
+    .grid { gap: 4px; padding: 6px 6px 10px; min-height: 300px; }
+    .weekdays { padding: 8px 6px 0; }
+    .day { min-height: 68px; padding: 6px 4px; border-radius: 9px; align-items: center; gap: 4px; }
+    .day-top { flex-direction: column; gap: 3px; }
+    .day-num { width: 24px; height: 24px; font-size: 12.5px; }
+    .day-menu, .no-meal-label, .mini-rate { display: none; }
+    .day-foot { justify-content: center; }
+    .kcal { font-size: 9.5px; padding: 1px 4px; }
+    .notice-badge, .warn-badge { width: 16px; height: 16px; font-size: 9px; }
+    .notice-badge svg { width: 10px; height: 10px; }
+    .auth-user .role-tag { display: none; }
+    .btn { padding: 0 11px; }
+    .diff { grid-template-columns: 1fr; }
+    .diff-arrow { transform: rotate(90deg); }
+    .form-row { grid-template-columns: 1fr; }
+    .modal { padding: 12px; }
+    .modal-head, .modal-body { padding-left: 16px; padding-right: 16px; }
+  }
+  @media (max-width: 420px) {
+    .brand-text h1 { font-size: 15px; }
+    .brand-logo { width: 34px; height: 34px; }
+    .authbar .btn { height: 32px; font-size: 12px; padding: 0 9px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= Header ================= -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M8 15h3M13 15h3"/></svg>
+      </div>
+      <div class="brand-text">
+        <h1>급식 캘린더</h1>
+        <p>월간 식단 · 알레르기 필터 · 학생 리뷰 · 변경 공지</p>
+      </div>
+    </div>
+    <div class="authbar" id="authbar">
+      <div class="spinner" style="width:20px;height:20px;border-width:2px"></div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= Main ================= -->
+<main class="app">
+  <aside class="sidebar">
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title">이번 달 요약</div>
+        <span class="card-sub" id="summaryMonth"></span>
+      </div>
+      <div class="card-body">
+        <div class="stats">
+          <div class="stat"><div class="stat-label">급식일</div><div class="stat-value" id="statDays">0<small>일</small></div></div>
+          <div class="stat"><div class="stat-label">평균 칼로리</div><div class="stat-value" id="statKcal">-<small>kcal</small></div></div>
+          <div class="stat"><div class="stat-label">변경 공지</div><div class="stat-value" id="statNotice">0<small>건</small></div></div>
+          <div class="stat"><div class="stat-label">알레르기 주의일</div><div class="stat-value" id="statWarn" style="color:var(--danger)">0<small>일</small></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+          알레르기 필터
+        </div>
+        <button class="link-btn" id="clearAllergy" type="button">초기화</button>
+      </div>
+      <div class="card-body">
+        <div class="chips" id="allergyChips"></div>
+        <p class="filter-hint"><span class="dot danger"></span><span id="allergyHint">선택한 알레르기 성분이 포함된 메뉴를 강조합니다.</span></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          식단 변경 공지
+        </div>
+        <span class="card-sub" id="noticeCount">0건</span>
+      </div>
+      <div class="card-body">
+        <div class="notice-list" id="noticeList"></div>
+      </div>
+    </section>
+  </aside>
+
+  <section class="card" id="calendarCard">
+    <div class="cal-head">
+      <div class="cal-title">
+        <h2 id="calTitle">-</h2>
+        <span id="calSub">월간 급식 식단표</span>
+      </div>
+      <div class="cal-nav">
+        <button class="icon-btn" id="prevMonth" type="button" aria-label="이전 달">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button class="btn btn-outline" id="todayBtn" type="button">오늘</button>
+        <button class="icon-btn" id="nextMonth" type="button" aria-label="다음 달">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="legend-item"><span class="dot today"></span>오늘</span>
+      <span class="legend-item"><span class="notice-badge" style="width:16px;height:16px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/></svg></span>메뉴 변경 공지</span>
+      <span class="legend-item"><span class="dot danger"></span>알레르기 주의 메뉴</span>
+      <span class="legend-item"><span style="color:var(--star)">★</span>평균 평점</span>
+    </div>
+    <div class="weekdays">
+      <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+    </div>
+    <div class="grid" id="calendarGrid">
+      <div class="loading-overlay"><div class="spinner"></div></div>
+    </div>
+  </section>
+</main>
+
+<!-- ================= Detail & Review Modal ================= -->
+<div class="modal" id="detailModal" aria-hidden="true">
+  <div class="modal-panel wide" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="detailTitle">-</h3>
+        <div class="detail-meta" id="detailMeta"></div>
+      </div>
+      <button class="icon-btn modal-close" data-close type="button" aria-label="닫기">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="detailNotice"></div>
+      <div class="section">
+        <div class="section-title">오늘의 메뉴</div>
+        <div id="detailMenu"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">학생 리뷰 <span class="count" id="reviewCount"></span></div>
+        <div id="reviewSummary"></div>
+        <div class="review-list" id="reviewList"></div>
+        <div id="reviewFormArea"></div>
+      </div>
+      <div id="adminArea"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= Auth Modal ================= -->
+<div class="modal" id="authModal" aria-hidden="true">
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="authTitle">로그인</h3>
+        <p id="authDesc">계정으로 로그인하고 급식 리뷰를 남겨보세요.</p>
+      </div>
+      <button class="icon-btn modal-close" data-close type="button" aria-label="닫기">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="login" type="button" role="tab">로그인</button>
+        <button class="tab" data-tab="register" type="button" role="tab">회원가입</button>
+      </div>
+
+      <form class="form" id="loginForm" novalidate>
+        <div class="field">
+          <label for="lUser">아이디</label>
+          <input class="input" id="lUser" name="username" autocomplete="username" placeholder="아이디를 입력하세요" required />
+        </div>
+        <div class="field">
+          <label for="lPass">비밀번호</label>
+          <input class="input" id="lPass" name="password" type="password" autocomplete="current-password" placeholder="비밀번호를 입력하세요" required />
+        </div>
+        <div class="form-error" id="loginError"></div>
+        <button class="btn btn-primary btn-block" type="submit" id="loginSubmit">로그인</button>
+      </form>
+
+      <form class="form" id="registerForm" novalidate hidden>
+        <div class="field">
+          <label for="rUser">아이디</label>
+          <input class="input" id="rUser" name="username" autocomplete="username" placeholder="영문/숫자 4자 이상" required />
+        </div>
+        <div class="field">
+          <label for="rName">이름 <span class="opt">(표시 이름)</span></label>
+          <input class="input" id="rName" name="name" autocomplete="name" placeholder="홍길동" required />
+        </div>
+        <div class="field">
+          <label for="rPass">비밀번호</label>
+          <input class="input" id="rPass" name="password" type="password" autocomplete="new-password" placeholder="4자 이상" required />
+        </div>
+        <div class="field">
+          <label for="rPass2">비밀번호 확인</label>
+          <input class="input" id="rPass2" type="password" autocomplete="new-password" placeholder="비밀번호를 한 번 더 입력하세요" required />
+        </div>
+        <div class="form-error" id="registerError"></div>
+        <button class="btn btn-primary btn-block" type="submit" id="registerSubmit">회원가입</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* =========================================================
+   API 엔드포인트 설정
+   ========================================================= */
+const API = {
+  user:     '/api/user',      // GET  → { logged_in, username, role }
+  login:    '/api/login',     // POST {username, password}
+  register: '/api/register',  // POST {username, name, password}
+  logout:   '/api/logout',    // POST
+  meals:    '/api/meals',     // GET  ?year=YYYY&month=M → [{date, menu, final_menu, kcal, notice, avg_rating, review_count}]
+  reviews:  '/api/reviews',   // GET  ?date=YYYY-MM-DD / POST {date, rating, comment} / DELETE /api/reviews/<id>
+  notice:   '/api/notice'     // GET  ?year=YYYY&month=M / POST {date, removed_menus, new_menu, reason} / DELETE /api/notice/<date>
+};
+
+const ALLERGENS = {
+  1: '난류', 2: '우유', 3: '메밀', 4: '땅콩', 5: '대두', 6: '밀', 7: '고등어',
+  8: '게', 9: '새우', 10: '돼지고기', 11: '복숭아', 12: '토마토', 13: '아황산류',
+  14: '호두', 15: '닭고기', 16: '쇠고기', 17: '오징어', 18: '조개류', 19: '잣'
+};
+const ROLE_LABEL = { student: '학생', user: '학생', teacher: '교사', admin: '관리자' };
+const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+const RATING_TEXT = ['', '별로예요', '아쉬워요', '보통이에요', '맛있어요', '최고예요'];
+
+const ICON_NOTICE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>';
+const ICON_ARROW = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+
+const today = new Date();
+const state = {
+  year: today.getFullYear(),
+  month: today.getMonth() + 1,
+  meals: {},
+  notices: {},
+  reviews: [],
+  user: null,
+  allergies: new Set(loadAllergies()),
+  selectedDate: null,
+  rating: 0,
+  reqId: 0
+};
+
+/* ---------------- Utilities ---------------- */
+const $ = (s, el = document) => el.querySelector(s);
+const pad = n => String(n).padStart(2, '0');
+const keyOf = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+const todayKey = keyOf(today.getFullYear(), today.getMonth() + 1, today.getDate());
+const normName = s => String(s ?? '').replace(/\s+/g, '').toLowerCase();
+const isAdmin = () => !!(state.user && state.user.isAdmin);
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function toKey(v) {
+  if (!v) return null;
+  const d = String(v).replace(/\D/g, '');
+  return d.length >= 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : null;
+}
+function parseCal(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = parseFloat(String(v).replace(/[^\d.]/g, ''));
+  return isNaN(n) ? null : n;
+}
+function formatDateKo(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  const w = new Date(y, m - 1, d).getDay();
+  return `${y}년 ${m}월 ${d}일 (${WEEK[w]})`;
+}
+function starsHtml(score) {
+  const r = Math.round(Number(score) || 0);
+  let s = '';
+  for (let i = 1; i <= 5; i++) s += `<span class="${i <= r ? 'on' : ''}">★</span>`;
+  return `<span class="stars" aria-label="${r}점">${s}</span>`;
+}
+function loadAllergies() {
+  try { return JSON.parse(localStorage.getItem('meal_allergies') || '[]').map(Number); } catch (e) { return []; }
+}
+function saveAllergies() {
+  try { localStorage.setItem('meal_allergies', JSON.stringify([...state.allergies])); } catch (e) {}
+}
+
+async function api(url, options = {}) {
+  const opts = { credentials: 'same-origin', ...options, headers: { 'Accept': 'application/json', ...(options.headers || {}) } };
+  if (opts.body && typeof opts.body !== 'string') {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(opts.body);
+  }
+  try {
+    const res = await fetch(url, opts);
+    let data = null;
+    const text = await res.text();
+    try { data = text ? JSON.parse(text) : null; } catch (e) { data = { message: text }; }
+    const ok = res.ok && !(data && (data.success === false || data.ok === false));
+    return { ok, status: res.status, data };
+  } catch (err) {
+    return { ok: false, status: 0, data: { message: '서버와 연결할 수 없습니다.' } };
+  }
+}
+const errMsg = (r, fallback) => (r.data && (r.data.message || r.data.error || r.data.msg)) || fallback;
+
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  $('#toastWrap').appendChild(el);
+  setTimeout(() => { el.classList.add('hide'); setTimeout(() => el.remove(), 300); }, 2600);
+}
+
+/* ---------------- Data normalizers ---------------- */
+function parseDish(raw) {
+  if (raw && typeof raw === 'object') {
+    const codes = [].concat(raw.allergies || raw.allergy || raw.codes || []).map(Number).filter(n => ALLERGENS[n]);
+    return { name: String(raw.name || raw.dish || raw.menu || '').trim(), codes };
+  }
+  let s = String(raw ?? '').replace(/<[^>]*>/g, '').replace(/\*/g, '').trim();
+  let codes = [];
+  const m = s.match(/\s*\(?((?:\d{1,2}\.)*\d{1,2}\.?)\)?\s*$/);
+  if (m && /\d/.test(m[1]) && m.index > 0) {
+    codes = m[1].split('.').filter(Boolean).map(Number).filter(n => ALLERGENS[n]);
+    s = s.slice(0, m.index).trim();
+  }
+  return { name: s, codes: [...new Set(codes)] };
+}
+function splitMenu(menu) {
+  if (!menu) return [];
+  let list;
+  if (Array.isArray(menu)) list = menu;
+  else {
+    const str = String(menu);
+    list = /<br\s*\/?>|\n/i.test(str) ? str.split(/<br\s*\/?>|\n/i) : str.split(/,(?![^()]*\))/);
+  }
+  return list.map(parseDish).filter(d => d.name);
+}
+function normalizeNotice(n) {
+  if (!n || typeof n !== 'object') return null;
+  let removed = n.removed_menus ?? n.old_menu ?? n.oldMenu ?? n.before ?? [];
+  if (!Array.isArray(removed)) removed = String(removed).split(/,(?![^()]*\))|\n/);
+  removed = removed.map(x => String(x ?? '').trim()).filter(Boolean);
+  const newMenu = String(n.new_menu ?? n.newMenu ?? n.after ?? '').trim();
+  if (!removed.length && !newMenu) return null;
+  return { removed, new_menu: newMenu, reason: String(n.reason ?? n.content ?? '').trim() };
+}
+/** 원본 메뉴 + 공지 → 화면 표시 목록 (removed: 취소선, added: 대체 메뉴) */
+function buildMeal(m) {
+  const original = splitMenu(m.menu ?? m.menus ?? m.dishes ?? m.menu_list ?? m.DDISH_NM ?? '');
+  const notice = normalizeNotice(m.notice);
+  let display = original.map(d => ({ ...d, state: 'normal' }));
+  if (notice) {
+    const removedSet = new Set(notice.removed.map(x => normName(parseDish(x).name)));
+    let lastRemoved = -1;
+    display = display.map((d, i) => {
+      if (removedSet.has(normName(d.name))) { lastRemoved = i; return { ...d, state: 'removed' }; }
+      return d;
+    });
+    const added = splitMenu(notice.new_menu).map(d => ({ ...d, state: 'added' }));
+    if (lastRemoved < 0) display = display.concat(added);
+    else display.splice(lastRemoved + 1, 0, ...added);
+  }
+  return {
+    original,
+    display,
+    dishes: display.filter(d => d.state !== 'removed'),   // 실제 제공되는 메뉴
+    notice,
+    calories: parseCal(m.calories ?? m.calorie ?? m.kcal ?? m.cal ?? m.CAL_INFO),
+    avg: m.avg_rating ?? m.rating_avg ?? m.average_rating ?? null,
+    count: m.review_count ?? m.reviews_count ?? null
+  };
+}
+function normalizeMeals(data) {
+  if (!data) return {};
+  let list = Array.isArray(data) ? data : (data.meals || data.data || data.items || null);
+  if (!list && typeof data === 'object') {
+    list = Object.entries(data)
+      .filter(([k]) => toKey(k))
+      .map(([k, v]) => (Array.isArray(v) || typeof v === 'string') ? { date: k, menu: v } : { date: k, ...v });
+  }
+  const map = {};
+  (list || []).forEach(m => {
+    const key = toKey(m.date || m.meal_date || m.day || m.MLSV_YMD);
+    if (key) map[key] = buildMeal(m);
+  });
+  return map;
+}
+function normalizeNotices(data) {
+  const list = Array.isArray(data) ? data : ((data && (data.notices || data.data || data.items)) || []);
+  const map = {};
+  list.forEach(n => {
+    const key = toKey(n.date || n.notice_date || n.meal_date);
+    const notice = normalizeNotice(n);
+    if (key && notice) map[key] = notice;   // 날짜당 1건 (마지막 공지가 최신)
+  });
+  return map;
+}
+function normalizeUser(d) {
+  if (!d) return null;
+  const u = d.user ?? d;
+  if (!u || typeof u !== 'object') return null;
+  if (u.logged_in === false || u.is_logged_in === false || u.authenticated === false) return null;
+  const username = u.username || u.user_id || u.id || '';
+  const name = u.name || u.nickname || username;
+  if (!name) return null;
+  const role = String(u.role || (u.is_admin ? 'admin' : 'student')).toLowerCase();
+  return { username, name, role, isAdmin: role === 'admin' };
+}
+function normalizeReviews(data) {
+  const list = Array.isArray(data) ? data : ((data && (data.reviews || data.data || data.items)) || []);
+  return list.map(r => ({
+    id: r.id ?? r.review_id ?? null,
+    username: r.username || null,
+    isMine: r.is_mine === true,
+    user: r.author || r.name || '익명',
+    rating: Number(r.rating ?? r.score ?? r.star ?? 0),
+    comment: r.comment ?? r.content ?? r.text ?? '',
+    created_at: r.created_at || r.date_created || r.timestamp || ''
+  }));
+}
+const hitCodes = dish => dish.codes.filter(c => state.allergies.has(c));
+const getNotice = key => (state.meals[key] && state.meals[key].notice) || state.notices[key] || null;
+const canDeleteReview = rv => !!state.user && (state.user.isAdmin || rv.isMine || (!!rv.username && rv.username === state.user.username));
+
+/* ---------------- Auth bar ---------------- */
+async function refreshUser() {
+  const r = await api(API.user);
+  state.user = r.ok ? normalizeUser(r.data) : null;
+  renderAuthbar();
+  if ($('#detailModal').classList.contains('open')) {
+    renderReviewForm();
+    renderReviewList();
+    renderAdminPanel();
+  }
+}
+function renderAuthbar() {
+  const bar = $('#authbar');
+  const u = state.user;
+  if (!u) {
+    bar.innerHTML = `
+      <button class="btn btn-ghost" type="button" data-auth="login">로그인</button>
+      <button class="btn btn-primary" type="button" data-auth="register">회원가입</button>`;
+  } else if (u.isAdmin) {
+    bar.innerHTML = `
+      <div class="auth-user"><span class="avatar admin">A</span>관리자님<span class="role-tag">(관리자)</span></div>
+      <button class="btn btn-notice" type="button" id="openNoticeBtn">${ICON_NOTICE} 식단 수정 공지</button>
+      <button class="btn btn-ghost" type="button" id="logoutBtn">로그아웃</button>`;
+  } else {
+    const role = ROLE_LABEL[u.role] || '학생';
+    bar.innerHTML = `
+      <div class="auth-user"><span class="avatar">${esc(u.name.slice(0, 1))}</span>${esc(u.name)}님<span class="role-tag">(${esc(role)})</span></div>
+      <button class="btn btn-outline" type="button" id="logoutBtn">로그아웃</button>`;
+  }
+}
+$('#authbar').addEventListener('click', async e => {
+  const authBtn = e.target.closest('[data-auth]');
+  if (authBtn) return openAuth(authBtn.dataset.auth);
+  if (e.target.closest('#openNoticeBtn')) return openAdminEditor(state.selectedDate || todayKey);
+  if (e.target.closest('#logoutBtn')) {
+    const r = await api(API.logout, { method: 'POST' });
+    if (!r.ok && r.status !== 0) await api(API.logout);
+    state.user = null;
+    renderAuthbar();
+    if ($('#detailModal').classList.contains('open')) { renderReviewForm(); renderReviewList(); renderAdminPanel(); }
+    toast('로그아웃되었습니다.');
+  }
+});
+
+/* ---------------- Modals ---------------- */
+function openModal(id) {
+  const m = document.getElementById(id);
+  m.classList.add('open');
+  m.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+}
+function closeModal(id) {
+  const m = document.getElementById(id);
+  m.classList.remove('open');
+  m.setAttribute('aria-hidden', 'true');
+  if (!document.querySelector('.modal.open')) document.body.classList.remove('modal-open');
+}
+document.querySelectorAll('.modal').forEach(m => {
+  m.addEventListener('mousedown', e => { if (e.target === m) closeModal(m.id); });
+  m.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(m.id)));
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const open = [...document.querySelectorAll('.modal.open')];
+  if (open.length) closeModal(open[open.length - 1].id);
+});
+
+/* ---------------- Auth modal ---------------- */
+function setAuthTab(tab) {
+  document.querySelectorAll('#authModal .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  $('#loginForm').hidden = tab !== 'login';
+  $('#registerForm').hidden = tab !== 'register';
+  $('#authTitle').textContent = tab === 'login' ? '로그인' : '회원가입';
+  $('#authDesc').textContent = tab === 'login' ? '계정으로 로그인하고 급식 리뷰를 남겨보세요.' : '간단한 정보 입력으로 바로 가입할 수 있어요.';
+  ['#loginError', '#registerError'].forEach(s => $(s).classList.remove('show'));
+  setTimeout(() => $(tab === 'login' ? '#lUser' : '#rUser').focus(), 50);
+}
+function openAuth(tab = 'login') {
+  $('#loginForm').reset();
+  $('#registerForm').reset();
+  openModal('authModal');
+  setAuthTab(tab);
+}
+document.querySelectorAll('#authModal .tab').forEach(t => t.addEventListener('click', () => setAuthTab(t.dataset.tab)));
+
+function showError(sel, msg) { const el = $(sel); el.textContent = msg; el.classList.add('show'); }
+function busy(btn, on, label) { btn.disabled = on; if (label) btn.textContent = label; }
+
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = $('#lUser').value.trim();
+  const password = $('#lPass').value;
+  if (!username || !password) return showError('#loginError', '아이디와 비밀번호를 모두 입력해주세요.');
+  const btn = $('#loginSubmit');
+  busy(btn, true, '로그인 중...');
+  const r = await api(API.login, { method: 'POST', body: { username, password } });
+  busy(btn, false, '로그인');
+  if (!r.ok) return showError('#loginError', errMsg(r, '아이디 또는 비밀번호가 올바르지 않습니다.'));
+  closeModal('authModal');
+  await refreshUser();
+  toast(isAdmin() ? '관리자로 로그인했습니다.' : `${state.user ? state.user.name : username}님, 환영합니다!`);
+});
+
+$('#registerForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = $('#rUser').value.trim();
+  const name = $('#rName').value.trim();
+  const password = $('#rPass').value;
+  const password2 = $('#rPass2').value;
+  if (!username || !name || !password) return showError('#registerError', '모든 항목을 입력해주세요.');
+  if (username.length < 4) return showError('#registerError', '아이디는 4자 이상이어야 합니다.');
+  if (password.length < 4) return showError('#registerError', '비밀번호는 4자 이상이어야 합니다.');
+  if (password !== password2) return showError('#registerError', '비밀번호가 일치하지 않습니다.');
+  const btn = $('#registerSubmit');
+  busy(btn, true, '가입 중...');
+  const r = await api(API.register, { method: 'POST', body: { username, name, password } });
+  busy(btn, false, '회원가입');
+  if (!r.ok) return showError('#registerError', errMsg(r, '회원가입에 실패했습니다.'));
+  await refreshUser();
+  if (state.user) {
+    closeModal('authModal');
+    toast(`${state.user.name}님, 가입을 환영합니다!`);
+  } else {
+    setAuthTab('login');
+    $('#lUser').value = username;
+    $('#lPass').focus();
+    toast('회원가입이 완료되었습니다. 로그인해주세요.');
+  }
+});
+
+/* ---------------- Allergy filter ---------------- */
+function renderChips() {
+  $('#allergyChips').innerHTML = Object.entries(ALLERGENS).map(([no, name]) =>
+    `<button type="button" class="chip ${state.allergies.has(+no) ? 'active' : ''}" data-code="${no}" aria-pressed="${state.allergies.has(+no)}"><span class="no">${no}</span>${name}</button>`
+  ).join('');
+  const n = state.allergies.size;
+  $('#allergyHint').textContent = n
+    ? `${n}개 성분 선택됨 · 포함된 메뉴를 빨간색으로 강조합니다.`
+    : '선택한 알레르기 성분이 포함된 메뉴를 강조합니다.';
+}
+function onAllergyChange() {
+  saveAllergies();
+  renderChips();
+  renderCalendar();
+  if ($('#detailModal').classList.contains('open')) renderDetailMenu();
+}
+$('#allergyChips').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  const code = +chip.dataset.code;
+  state.allergies.has(code) ? state.allergies.delete(code) : state.allergies.add(code);
+  onAllergyChange();
+});
+$('#clearAllergy').addEventListener('click', () => {
+  state.allergies.clear();
+  onAllergyChange();
+});
+
+/* ---------------- Calendar ---------------- */
+async function loadMonth() {
+  const id = ++state.reqId;
+  const { year, month } = state;
+  $('#calendarCard').classList.add('loading');
+  renderCalendar();
+  const q = `?year=${year}&month=${month}`;
+  const [mealsRes, noticeRes] = await Promise.all([api(API.meals + q), api(API.notice + q)]);
+  if (id !== state.reqId) return;
+  state.meals = mealsRes.ok ? normalizeMeals(mealsRes.data) : {};
+  state.notices = noticeRes.ok ? normalizeNotices(noticeRes.data) : {};
+  if (!mealsRes.ok) toast(errMsg(mealsRes, '급식 정보를 불러오지 못했습니다.'), 'error');
+  $('#calendarCard').classList.remove('loading');
+  renderCalendar();
+  renderNoticeList();
+}
+
+function renderCalendar() {
+  const { year, month } = state;
+  $('#calTitle').textContent = `${year}. ${pad(month)}`;
+  $('#summaryMonth').textContent = `${year}년 ${month}월`;
+
+  const first = new Date(year, month - 1, 1).getDay();
+  const last = new Date(year, month, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < first; i++) cells.push('<div class="day empty" aria-hidden="true"></div>');
+
+  let mealDays = 0, kcalSum = 0, kcalCnt = 0, warnDays = 0;
+
+  for (let d = 1; d <= last; d++) {
+    const key = keyOf(year, month, d);
+    const w = (first + d - 1) % 7;
+    const meal = state.meals[key];
+    const notice = getNotice(key);
+    const cls = ['day'];
+    if (w === 0) cls.push('sun');
+    if (w === 6) cls.push('sat');
+    if (key === todayKey) cls.push('today');
+    if (notice) cls.push('has-notice');
+
+    let menuHtml = '', footHtml = '', danger = false;
+    if (meal && meal.display.length) {
+      mealDays++;
+      if (meal.calories) { kcalSum += meal.calories; kcalCnt++; }
+      danger = meal.dishes.some(dish => hitCodes(dish).length);
+      const MAX = 5;
+      menuHtml = '<ul class="day-menu">' + meal.display.slice(0, MAX).map(dish => {
+        const hit = dish.state !== 'removed' && hitCodes(dish).length > 0;
+        const c = [dish.state !== 'normal' ? dish.state : '', hit ? 'warn' : ''].filter(Boolean).join(' ');
+        const label = dish.state === 'added' ? `↳ ${dish.name}` : dish.name;
+        return `<li class="${c}" title="${esc(dish.name)}">${esc(label)}</li>`;
+      }).join('') + (meal.display.length > MAX ? `<li class="more">+${meal.display.length - MAX}개 더보기</li>` : '') + '</ul>';
+      const rate = meal.avg !== null && meal.avg !== undefined && Number(meal.avg) > 0
+        ? `<span class="mini-rate"><b>★</b>${Number(meal.avg).toFixed(1)}</span>` : '<span></span>';
+      footHtml = `<div class="day-foot">${meal.calories ? `<span class="kcal">${Math.round(meal.calories)} kcal</span>` : '<span></span>'}${rate}</div>`;
+    } else {
+      cls.push('no-meal');
+      footHtml = '<span class="no-meal-label">급식 없음</span>';
+    }
+    if (danger) { cls.push('danger'); warnDays++; }
+
+    const icons = (notice ? `<span class="notice-badge" title="메뉴 변경 공지">${ICON_NOTICE}</span>` : '') +
+                  (danger ? '<span class="warn-badge" title="알레르기 주의">!</span>' : '');
+
+    cells.push(`
+      <div class="${cls.join(' ')}" data-date="${key}" role="button" tabindex="0" aria-label="${formatDateKo(key)} 급식 상세 보기">
+        <div class="day-top"><span class="day-num">${d}</span><span class="day-icons">${icons}</span></div>
+        ${menuHtml}
+        ${footHtml}
+      </div>`);
+  }
+  while (cells.length % 7) cells.push('<div class="day empty" aria-hidden="true"></div>');
+
+  $('#calendarGrid').innerHTML = '<div class="loading-overlay"><div class="spinner"></div></div>' + cells.join('');
+
+  $('#statDays').innerHTML = `${mealDays}<small>일</small>`;
+  $('#statKcal').innerHTML = `${kcalCnt ? Math.round(kcalSum / kcalCnt) : '-'}<small>kcal</small>`;
+  $('#statNotice').innerHTML = `${Object.keys(state.notices).length}<small>건</small>`;
+  $('#statWarn').innerHTML = `${warnDays}<small>일</small>`;
+}
+
+function noticeSummary(n) {
+  const removed = n.removed.map(x => parseDish(x).name).join(', ') || '-';
+  const added = splitMenu(n.new_menu).map(d => d.name).join(', ') || '-';
+  return { removed, added };
+}
+function renderNoticeList() {
+  const entries = Object.entries(state.notices).sort(([a], [b]) => a.localeCompare(b));
+  $('#noticeCount').textContent = `${entries.length}건`;
+  $('#noticeList').innerHTML = entries.length
+    ? entries.map(([key, n]) => {
+        const [, m, d] = key.split('-').map(Number);
+        const s = noticeSummary(n);
+        return `<button type="button" class="notice-item" data-date="${key}">
+          <div class="n-date">${m}월 ${d}일 (${WEEK[new Date(key.replace(/-/g, '/')).getDay()]})</div>
+          <div class="n-body"><s>${esc(s.removed)}</s> → <b>${esc(s.added)}</b></div>
+        </button>`;
+      }).join('')
+    : '<div class="empty-mini">이번 달 등록된 변경 공지가 없습니다.</div>';
+}
+$('#noticeList').addEventListener('click', e => {
+  const it = e.target.closest('.notice-item');
+  if (it) openDetail(it.dataset.date);
+});
+
+const grid = $('#calendarGrid');
+grid.addEventListener('click', e => {
+  const cell = e.target.closest('.day[data-date]');
+  if (cell) openDetail(cell.dataset.date);
+});
+grid.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const cell = e.target.closest('.day[data-date]');
+  if (cell) { e.preventDefault(); openDetail(cell.dataset.date); }
+});
+
+function moveMonth(diff) {
+  let m = state.month + diff, y = state.year;
+  if (m < 1) { m = 12; y--; }
+  if (m > 12) { m = 1; y++; }
+  state.year = y; state.month = m;
+  loadMonth();
+}
+$('#prevMonth').addEventListener('click', () => moveMonth(-1));
+$('#nextMonth').addEventListener('click', () => moveMonth(1));
+$('#todayBtn').addEventListener('click', () => {
+  state.year = today.getFullYear(); state.month = today.getMonth() + 1;
+  loadMonth();
+});
+
+/* ---------------- Detail & Review modal ---------------- */
+function openDetail(key) {
+  state.selectedDate = key;
+  state.rating = 0;
+  state.reviews = [];
+  $('#detailTitle').textContent = formatDateKo(key);
+  renderDetailMeta(null);
+  renderDetailNotice();
+  renderDetailMenu();
+  $('#reviewSummary').innerHTML = '';
+  $('#reviewCount').textContent = '';
+  $('#reviewList').innerHTML = '<div class="empty-block"><div class="spinner" style="margin:0 auto"></div></div>';
+  renderReviewForm();
+  renderAdminPanel();
+  openModal('detailModal');
+  $('#detailModal .modal-body').scrollTop = 0;
+  loadReviews(key);
+}
+
+async function openAdminEditor(key) {
+  if (!isAdmin()) return toast('관리자만 이용할 수 있습니다.', 'error');
+  const [y, m] = key.split('-').map(Number);
+  if (y !== state.year || m !== state.month) {
+    state.year = y; state.month = m;
+    await loadMonth();
+  }
+  openDetail(key);
+  setTimeout(() => $('#adminArea').scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+}
+
+function renderDetailMeta(reviewStats) {
+  const key = state.selectedDate;
+  const meal = state.meals[key];
+  const pills = [];
+  if (meal && meal.calories) pills.push(`<span class="pill">🔥 ${meal.calories.toLocaleString()} kcal</span>`);
+  if (meal && meal.dishes.length) pills.push(`<span class="pill">🍱 ${meal.dishes.length}가지 메뉴</span>`);
+  if (reviewStats && reviewStats.count) pills.push(`<span class="pill star"><b>★</b> ${reviewStats.avg.toFixed(1)} · ${reviewStats.count}명</span>`);
+  const warn = meal ? meal.dishes.filter(d => hitCodes(d).length).length : 0;
+  if (warn) pills.push(`<span class="pill danger">⚠ 알레르기 주의 ${warn}개</span>`);
+  if (getNotice(key)) pills.push(`<span class="pill" style="color:var(--notice);border-color:#f6dcaa;background:var(--notice-bg)">${ICON_NOTICE} 메뉴 변경</span>`);
+  $('#detailMeta').innerHTML = pills.join('');
+}
+
+function renderDetailNotice() {
+  const n = getNotice(state.selectedDate);
+  if (!n) { $('#detailNotice').innerHTML = ''; return; }
+  const removed = n.removed.map(x => parseDish(x).name);
+  const added = splitMenu(n.new_menu).map(d => d.name);
+  const list = arr => arr.length ? `<ul>${arr.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '-';
+  $('#detailNotice').innerHTML = `
+    <div class="section"><div class="notice-box">
+      <div class="notice-box-head">${ICON_NOTICE} 식단 변경 공지</div>
+      <div class="diff">
+        <div class="diff-col old"><div class="k">제공되지 않는 메뉴</div><div class="v">${list(removed)}</div></div>
+        <div class="diff-arrow">${ICON_ARROW}</div>
+        <div class="diff-col new"><div class="k">대체 메뉴</div><div class="v">${list(added)}</div></div>
+      </div>
+      ${n.reason ? `<div class="notice-reason"><b>사유</b> · ${esc(n.reason)}</div>` : ''}
+    </div></div>`;
+}
+
+function renderDetailMenu() {
+  const meal = state.meals[state.selectedDate];
+  if (!meal || !meal.display.length) {
+    $('#detailMenu').innerHTML = '<div class="empty-block">이 날짜에 등록된 급식 정보가 없습니다.</div>';
+  } else {
+    $('#detailMenu').innerHTML = '<div class="menu-list">' + meal.display.map(d => {
+      const removed = d.state === 'removed';
+      const hits = removed ? [] : hitCodes(d);
+      const stateTag = removed ? '<span class="state-tag removed">제공 안 함</span>'
+                     : d.state === 'added' ? '<span class="state-tag added">대체 메뉴</span>' : '';
+      const tags = removed ? '' : d.codes.map(c => `<span class="atag ${state.allergies.has(c) ? 'hit' : ''}">${ALLERGENS[c]}</span>`).join('');
+      const cls = ['menu-row', d.state !== 'normal' ? d.state : '', hits.length ? 'warn' : ''].filter(Boolean).join(' ');
+      return `<div class="${cls}">
+        <div class="menu-name">${hits.length ? '⚠️' : ''}<span>${esc(d.name)}</span>${stateTag}</div>
+        <div class="menu-tags">${tags}</div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+  renderDetailMeta(state._reviewStats && state._reviewStats.key === state.selectedDate ? state._reviewStats : null);
+}
+
+/* ---------------- Reviews ---------------- */
+async function loadReviews(key) {
+  const r = await api(`${API.reviews}?date=${encodeURIComponent(key)}`);
+  if (key !== state.selectedDate) return;
+  if (!r.ok) {
+    $('#reviewList').innerHTML = `<div class="empty-block">${esc(errMsg(r, '리뷰를 불러오지 못했습니다.'))}</div>`;
+    return;
+  }
+  state.reviews = normalizeReviews(r.data);
+  const count = state.reviews.length;
+  const avg = count ? state.reviews.reduce((a, b) => a + b.rating, 0) / count : 0;
+  state._reviewStats = { key, count, avg };
+
+  if (state.meals[key]) { state.meals[key].avg = count ? avg : null; state.meals[key].count = count; }
+  renderCalendar();
+  renderDetailMeta(state._reviewStats);
+  renderReviewList();
+}
+
+function renderReviewList() {
+  const reviews = state.reviews;
+  const stats = state._reviewStats && state._reviewStats.key === state.selectedDate ? state._reviewStats : { count: 0, avg: 0 };
+  $('#reviewCount').textContent = stats.count ? `${stats.count}개` : '';
+  $('#reviewSummary').innerHTML = stats.count ? `
+    <div class="review-summary">
+      <div class="review-avg">${stats.avg.toFixed(1)}</div>
+      <div>${starsHtml(stats.avg)}<div class="card-sub">${stats.count}명의 학생이 평가했어요</div></div>
+    </div>` : '';
+  $('#reviewList').innerHTML = reviews.length
+    ? reviews.map(rv => `
+      <div class="review">
+        <div class="review-top">
+          <div class="review-user"><span class="avatar">${esc(String(rv.user).slice(0, 1))}</span>${esc(rv.user)} ${starsHtml(rv.rating)}${rv.isMine ? '<span class="mine-tag">내 평가</span>' : ''}</div>
+          <div class="review-actions">
+            ${rv.created_at ? `<span class="review-date">${esc(String(rv.created_at).slice(0, 16).replace('T', ' '))}</span>` : ''}
+            ${canDeleteReview(rv) && rv.id !== null ? `<button type="button" class="btn-del" data-review-id="${esc(rv.id)}">삭제</button>` : ''}
+          </div>
+        </div>
+        <div class="review-text">${esc(rv.comment)}</div>
+      </div>`).join('')
+    : '<div class="empty-block">아직 등록된 리뷰가 없어요. 첫 리뷰를 남겨보세요!</div>';
+}
+
+$('#reviewList').addEventListener('click', async e => {
+  const btn = e.target.closest('.btn-del[data-review-id]');
+  if (!btn) return;
+  if (!confirm('정말 이 평가를 삭제하시겠습니까?')) return;
+  const key = state.selectedDate;
+  busy(btn, true, '삭제 중');
+  const r = await api(`${API.reviews}/${encodeURIComponent(btn.dataset.reviewId)}`, { method: 'DELETE' });
+  if (!r.ok) {
+    busy(btn, false, '삭제');
+    if (r.status === 401) { toast('로그인이 필요합니다.', 'error'); await refreshUser(); return openAuth('login'); }
+    return toast(errMsg(r, '리뷰 삭제에 실패했습니다.'), 'error');
+  }
+  toast('평가가 삭제되었습니다.');
+  await loadReviews(key);   // 리뷰 목록 + 달력 평점 즉시 갱신
+  renderReviewForm();
+});
+
+function renderReviewForm() {
+  const area = $('#reviewFormArea');
+  if (!state.user) {
+    area.innerHTML = `<div class="login-prompt"><span>로그인한 학생만 별점과 한 줄 평을 남길 수 있어요.</span><button class="btn btn-primary" type="button" id="promptLogin">로그인</button></div>`;
+    $('#promptLogin').addEventListener('click', () => openAuth('login'));
+    return;
+  }
+  area.innerHTML = `
+    <form class="review-form" id="reviewForm" novalidate>
+      <div class="section-title" style="margin-bottom:6px">나의 평가 남기기</div>
+      <div class="star-picker" id="starPicker">
+        ${[1, 2, 3, 4, 5].map(i => `<button type="button" class="star-btn" data-v="${i}" aria-label="${i}점">★</button>`).join('')}
+        <span class="star-label" id="starLabel">별점을 선택하세요</span>
+      </div>
+      <div class="review-input-row">
+        <input class="input" id="reviewText" maxlength="100" placeholder="오늘 급식 한 줄 평을 남겨주세요 (최대 100자)" />
+        <button class="btn btn-primary" type="submit" id="reviewSubmit" style="height:44px">등록</button>
+      </div>
+    </form>`;
+  const picker = $('#starPicker');
+  const paint = v => {
+    picker.querySelectorAll('.star-btn').forEach(b => b.classList.toggle('on', +b.dataset.v <= v));
+    $('#starLabel').textContent = v ? `${v}점 · ${RATING_TEXT[v]}` : '별점을 선택하세요';
+  };
+  paint(state.rating);
+  picker.addEventListener('click', e => {
+    const b = e.target.closest('.star-btn');
+    if (b) { state.rating = +b.dataset.v; paint(state.rating); }
+  });
+  picker.addEventListener('mouseover', e => { const b = e.target.closest('.star-btn'); if (b) paint(+b.dataset.v); });
+  picker.addEventListener('mouseleave', () => paint(state.rating));
+  $('#reviewForm').addEventListener('submit', submitReview);
+}
+
+async function submitReview(e) {
+  e.preventDefault();
+  const comment = $('#reviewText').value.trim();
+  if (!state.rating) return toast('별점을 선택해주세요.', 'error');
+  if (!comment) return toast('한 줄 평을 입력해주세요.', 'error');
+  const btn = $('#reviewSubmit');
+  busy(btn, true, '등록 중');
+  const key = state.selectedDate;
+  const r = await api(API.reviews, { method: 'POST', body: { date: key, rating: state.rating, comment } });
+  busy(btn, false, '등록');
+  if (!r.ok) {
+    if (r.status === 401) { toast('로그인이 필요합니다.', 'error'); await refreshUser(); return openAuth('login'); }
+    return toast(errMsg(r, '리뷰 등록에 실패했습니다.'), 'error');
+  }
+  toast('리뷰가 등록되었습니다.');
+  state.rating = 0;
+  renderReviewForm();
+  loadReviews(key);
+}
+
+/* ---------------- Admin: 식단 수정 공지 (체크박스) ---------------- */
+function renderAdminPanel() {
+  const area = $('#adminArea');
+  if (!isAdmin() || !state.selectedDate) { area.innerHTML = ''; return; }
+  const key = state.selectedDate;
+  const meal = state.meals[key];
+  const notice = getNotice(key);
+  const original = meal ? meal.original : [];
+  const removedSet = new Set(notice ? notice.removed.map(x => normName(parseDish(x).name)) : []);
+
+  const checks = original.length
+    ? `<div class="check-list">${original.map(d => {
+        const on = removedSet.has(normName(d.name));
+        return `<label class="check-item ${on ? 'checked' : ''}" title="${esc(d.name)}">
+          <input type="checkbox" name="removed" value="${esc(d.name)}" ${on ? 'checked' : ''} />
+          <span>${esc(d.name)}</span>
+        </label>`;
+      }).join('')}</div>`
+    : '<div class="empty-mini">이 날짜의 급식 정보가 없어 제외할 메뉴가 없습니다. 대체 메뉴만 입력할 수 있어요.</div>';
+
+  area.innerHTML = `
+    <div class="section">
+      <div class="section-title">
+        <span>🛠️ 관리자 · 식단 수정 공지</span>
+        ${notice ? '<button type="button" class="btn btn-danger" id="deleteNoticeBtn">🗑️ 등록된 공지 삭제</button>' : ''}
+      </div>
+      <form class="admin-box form" id="adminNoticeForm" novalidate>
+        <div class="field">
+          <label>제공되지 않는 메뉴 <span class="opt">(체크한 메뉴에 취소선이 표시됩니다)</span></label>
+          ${checks}
+        </div>
+        <div class="field">
+          <label for="aNew">대체 메뉴 <span class="opt">(여러 개는 쉼표로 구분, 알레르기 번호 입력 가능)</span></label>
+          <input class="input" id="aNew" maxlength="300" placeholder="예) 치킨까스 (1.2.5.6.15.)" value="${esc(notice ? notice.new_menu : '')}" />
+        </div>
+        <div class="field">
+          <label for="aReason">변경 사유</label>
+          <textarea class="textarea" id="aReason" maxlength="300" placeholder="예) 식재료 수급 문제로 인한 메뉴 변경">${esc(notice ? notice.reason : '')}</textarea>
+        </div>
+        <div class="form-error" id="adminNoticeError"></div>
+        <button class="btn btn-primary btn-block" type="submit" id="adminNoticeSubmit">${notice ? '공지 수정하기' : '공지 등록하기'}</button>
+      </form>
+    </div>`;
+
+  area.querySelectorAll('.check-item input').forEach(input =>
+    input.addEventListener('change', () => input.closest('.check-item').classList.toggle('checked', input.checked)));
+  $('#adminNoticeForm').addEventListener('submit', submitNotice);
+  const del = $('#deleteNoticeBtn');
+  if (del) del.addEventListener('click', deleteNotice);
+}
+
+async function afterNoticeChange(key) {
+  await loadMonth();   // 달력/공지 데이터를 서버에서 다시 불러와 반영
+  if ($('#detailModal').classList.contains('open') && state.selectedDate === key) {
+    renderDetailNotice();
+    renderDetailMenu();
+    renderAdminPanel();
+  }
+}
+
+async function submitNotice(e) {
+  e.preventDefault();
+  const key = state.selectedDate;
+  const body = {
+    date: key,
+    removed_menus: [...document.querySelectorAll('#adminNoticeForm input[name="removed"]:checked')].map(i => i.value),
+    new_menu: $('#aNew').value.trim(),
+    reason: $('#aReason').value.trim()
+  };
+  $('#adminNoticeError').classList.remove('show');
+  if (!body.removed_menus.length && !body.new_menu) return showError('#adminNoticeError', '제공되지 않는 메뉴를 선택하거나 대체 메뉴를 입력해주세요.');
+  if (!body.reason) return showError('#adminNoticeError', '변경 사유를 입력해주세요.');
+  const btn = $('#adminNoticeSubmit');
+  const label = btn.textContent;
+  busy(btn, true, '저장 중...');
+  const r = await api(API.notice, { method: 'POST', body });
+  busy(btn, false, label);
+  if (!r.ok) {
+    if (r.status === 401 || r.status === 403) return showError('#adminNoticeError', '관리자 권한이 필요합니다. 다시 로그인해주세요.');
+    return showError('#adminNoticeError', errMsg(r, '공지 저장에 실패했습니다.'));
+  }
+  toast(errMsg(r, '식단 변경 공지가 저장되었습니다.'));
+  await afterNoticeChange(key);
+}
+
+async function deleteNotice() {
+  const key = state.selectedDate;
+  if (!confirm(`${formatDateKo(key)}에 등록된 식단 변경 공지를 삭제하시겠습니까?`)) return;
+  const btn = $('#deleteNoticeBtn');
+  busy(btn, true, '삭제 중...');
+  const r = await api(`${API.notice}/${encodeURIComponent(key)}`, { method: 'DELETE' });
+  if (!r.ok) {
+    busy(btn, false, '🗑️ 등록된 공지 삭제');
+    if (r.status === 401 || r.status === 403) return toast('관리자 권한이 필요합니다.', 'error');
+    return toast(errMsg(r, '공지 삭제에 실패했습니다.'), 'error');
+  }
+  toast('공지가 삭제되어 원래 식단으로 복원되었습니다.');
+  await afterNoticeChange(key);
+}
+
+/* ---------------- Init ---------------- */
+renderChips();
+refreshUser();
+loadMonth();
+</script>
+</body>
+</html>
