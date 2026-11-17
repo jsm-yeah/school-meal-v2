@@ -1,0 +1,1677 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<!-- 글자 인코딩(한글 깨짐 방지)과 휴대폰 화면 폭 맞춤 -->
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>급식 캘린더</title>
+<!-- Pretendard 한글 글꼴 불러오기 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<!-- ================= 꾸밈(CSS) ================= -->
+<style>
+  /* 색·둥근 모서리·그림자 값을 변수로 모아 둔 곳. 아래에서 var(--이름) 으로 꺼내 쓴다 */
+  :root {
+    --bg: #f3f4f6;
+    --surface: #ffffff;
+    --surface-2: #f9fafb;
+    --surface-3: #f1f2f4;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #111827;
+    --text-2: #4b5563;
+    --muted: #9ca3af;
+    --primary: #1f2937;
+    --primary-hover: #0b1220;
+    --focus: #6b7fd7;
+    --danger: #e11d48;
+    --danger-bg: #fff1f3;
+    --notice: #d97706;
+    --notice-bg: #fff8eb;
+    --star: #f5b301;
+    --sun: #e0484d;
+    --sat: #3b6fd8;
+    --ok: #16a34a;
+    --radius-lg: 18px;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --sh-xs: 0 1px 2px rgba(17, 24, 39, .04);
+    --sh-sm: 0 1px 2px rgba(17, 24, 39, .04), 0 2px 6px rgba(17, 24, 39, .05);
+    --sh-md: 0 6px 18px -4px rgba(17, 24, 39, .08), 0 2px 4px rgba(17, 24, 39, .04);
+    --sh-lg: 0 30px 60px -18px rgba(17, 24, 39, .35), 0 8px 20px -8px rgba(17, 24, 39, .12);
+  }
+
+  /* 브라우저 기본 여백 없애기 */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 0 0, #ffffff 0, transparent 40%), radial-gradient(circle at 100% 0, #eef0f4 0, transparent 35%);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* 창(모달)이 열려 있는 동안 뒤 화면이 스크롤되지 않게 */
+  body.modal-open { overflow: hidden; }
+  button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, textarea, select { font: inherit; color: inherit; }
+  ul { list-style: none; }
+
+  /* ---------- Header ---------- */
+  /* 스크롤해도 화면 위에 붙어 있는 반투명 머리 줄 */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255, 255, 255, .82);
+    backdrop-filter: saturate(160%) blur(14px);
+    -webkit-backdrop-filter: saturate(160%) blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1320px; margin: 0 auto; padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand-logo {
+    width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+    background: linear-gradient(145deg, #2b3445, #111827);
+    display: grid; place-items: center; color: #fff;
+    box-shadow: 0 6px 14px -4px rgba(17, 24, 39, .45), inset 0 1px 0 rgba(255,255,255,.12);
+  }
+  .brand-text h1 { font-size: 17px; font-weight: 800; letter-spacing: -.3px; }
+  .brand-text p { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* 오른쪽 위 로그인 영역과 사용자 표시(아바타 동그라미) */
+  .authbar { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .auth-user {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 6px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); box-shadow: var(--sh-xs);
+    font-weight: 600; font-size: 13px;
+  }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 12px; font-weight: 700;
+    background: var(--surface-3); color: var(--text-2); border: 1px solid var(--border);
+  }
+  .avatar.admin { background: #111827; color: #fff; border-color: #111827; }
+  .role-tag { font-size: 11px; font-weight: 600; color: var(--muted); }
+
+  /* ---------- Buttons ---------- */
+  /* 버튼 공통 모양. btn-primary(진한색) / btn-outline(테두리) / btn-ghost(배경 없음) / btn-notice(노란색) 로 색만 바꾼다 */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 36px; padding: 0 14px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; white-space: nowrap;
+    transition: background .15s, box-shadow .15s, border-color .15s, transform .05s, color .15s;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 3px solid rgba(107, 127, 215, .35); outline-offset: 1px; }
+  .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 4px 10px -3px rgba(17, 24, 39, .45); }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-outline { background: var(--surface); border: 1px solid var(--border-strong); box-shadow: var(--sh-xs); }
+  .btn-outline:hover { background: var(--surface-2); border-color: #c2c7d0; }
+  .btn-ghost { color: var(--text-2); }
+  .btn-ghost:hover { background: var(--surface-3); color: var(--text); }
+  .btn-notice { background: var(--notice-bg); color: #9a5300; border: 1px solid #f6dcaa; }
+  .btn-notice:hover { background: #fff1d6; }
+  .btn-block { width: 100%; height: 44px; font-size: 14px; }
+  .btn[disabled] { opacity: .55; cursor: not-allowed; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+    background: var(--surface); border: 1px solid var(--border); box-shadow: var(--sh-xs); color: var(--text-2);
+    transition: background .15s, color .15s;
+  }
+  .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+
+  /* ---------- Layout ---------- */
+  /* 왼쪽 사이드바(300px) + 오른쪽 달력의 2칸 배치 */
+  .app {
+    max-width: 1320px; margin: 0 auto; padding: 24px;
+    display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start;
+  }
+  /* 흰 상자(카드) 공통 모양 */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); box-shadow: var(--sh-md);
+  }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 16px 18px 12px;
+  }
+  .card-title { font-size: 14px; font-weight: 700; letter-spacing: -.2px; display: flex; align-items: center; gap: 8px; }
+  .card-sub { font-size: 12px; color: var(--muted); }
+  .card-body { padding: 0 18px 18px; }
+  .sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 92px; }
+
+  /* Stats */
+  /* '이번 달 요약' 숫자 4칸 */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px;
+  }
+  .stat-label { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+  .stat-value { font-size: 20px; font-weight: 800; letter-spacing: -.5px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .stat-value small { font-size: 12px; font-weight: 600; color: var(--text-2); margin-left: 2px; }
+
+  /* Allergy chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  /* 알레르기 선택 버튼. 선택되면 .active 가 붙어 빨갛게 바뀐다 */
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    height: 28px; padding: 0 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; color: var(--text-2);
+    background: var(--surface); border: 1px solid var(--border);
+    transition: all .15s;
+  }
+  .chip:hover { border-color: var(--border-strong); background: var(--surface-2); }
+  .chip .no { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .chip.active { background: var(--danger-bg); border-color: #fbc4cf; color: var(--danger); box-shadow: 0 2px 6px -2px rgba(225, 29, 72, .25); }
+  .chip.active .no { color: #f0718f; }
+  .filter-hint { font-size: 12px; color: var(--muted); margin-top: 12px; display: flex; align-items: center; gap: 6px; }
+  .link-btn { font-size: 12px; font-weight: 600; color: var(--text-2); padding: 4px 8px; border-radius: 6px; }
+  .link-btn:hover { background: var(--surface-3); color: var(--text); }
+
+  /* Notice list (sidebar) */
+  /* 왼쪽 '식단 변경 공지' 목록 */
+  .notice-list { display: flex; flex-direction: column; gap: 8px; }
+  .notice-item {
+    text-align: left; width: 100%;
+    padding: 10px 12px; border-radius: var(--radius);
+    background: var(--notice-bg); border: 1px solid #f6e2bb;
+    transition: box-shadow .15s, transform .15s;
+  }
+  .notice-item:hover { box-shadow: var(--sh-sm); transform: translateY(-1px); }
+  .notice-item .n-date { font-size: 11.5px; font-weight: 700; color: var(--notice); }
+  .notice-item .n-body { font-size: 12.5px; color: var(--text-2); margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .empty-mini { font-size: 12.5px; color: var(--muted); padding: 12px; text-align: center; background: var(--surface-2); border: 1px dashed var(--border); border-radius: var(--radius); }
+
+  /* ---------- Calendar ---------- */
+  /* 달력 머리: 연·월 제목과 이전/오늘/다음 버튼 */
+  .cal-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 18px 20px; border-bottom: 1px solid var(--border);
+  }
+  .cal-title { display: flex; align-items: baseline; gap: 10px; }
+  .cal-title h2 { font-size: 24px; font-weight: 800; letter-spacing: -.6px; font-variant-numeric: tabular-nums; }
+  .cal-title span { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .cal-nav { display: flex; align-items: center; gap: 6px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface-2); font-size: 12px; color: var(--text-2); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.danger { background: var(--danger); }
+  .dot.today { background: var(--primary); }
+
+  /* 요일 줄 (일요일은 빨강, 토요일은 파랑) */
+  .weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 10px 12px 0; }
+  .weekdays div { text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding: 6px 0; letter-spacing: .5px; }
+  .weekdays div:first-child { color: var(--sun); }
+  .weekdays div:last-child { color: var(--sat); }
+
+  /* 달력 본체: 7칸(일~토) 격자 */
+  .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; padding: 8px 12px 14px; position: relative; min-height: 420px; }
+  /* 날짜 한 칸. today(오늘) / no-meal(급식 없음) / danger(알레르기 주의) / has-notice(공지 있음) 클래스로 모양이 바뀐다 */
+  .day {
+    position: relative; min-height: 124px; padding: 10px 10px 8px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    display: flex; flex-direction: column; gap: 6px; cursor: pointer; text-align: left; overflow: hidden;
+    transition: box-shadow .18s, transform .18s, border-color .18s;
+  }
+  .day:hover { box-shadow: var(--sh-md); transform: translateY(-2px); border-color: var(--border-strong); }
+  .day:focus-visible { outline: 3px solid rgba(107, 127, 215, .35); outline-offset: 1px; }
+  .day.empty { background: transparent; border: 1px dashed transparent; cursor: default; box-shadow: none; transform: none; }
+  .day.no-meal { background: var(--surface-2); }
+  .day.no-meal .day-num { color: var(--muted); }
+  .day.today { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary), var(--sh-sm); }
+  .day.danger::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--danger); }
+  .day-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+  .day-num { font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; }
+  .day.sun .day-num { color: var(--sun); }
+  .day.sat .day-num { color: var(--sat); }
+  .day.today .day-num { background: var(--primary); color: #fff; }
+  .day-icons { display: flex; align-items: center; gap: 4px; }
+  .notice-badge {
+    display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px;
+    background: var(--notice-bg); color: var(--notice); border: 1px solid #f6dcaa;
+  }
+  .warn-badge { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: var(--danger-bg); color: var(--danger); font-size: 11px; font-weight: 800; border: 1px solid #fbd0d9; }
+  /* 날짜 칸 안의 메뉴 목록. 길면 … 으로 줄이고, 알레르기에 걸린 메뉴(.warn)는 빨간 굵은 글씨 */
+  .day-menu { display: flex; flex-direction: column; gap: 1px; flex: 1; min-height: 0; }
+  .day-menu li { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .day-menu li.warn { color: var(--danger); font-weight: 600; }
+  .day-menu li.more { color: var(--muted); font-size: 11px; }
+  .day-foot { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: auto; }
+  .kcal { font-size: 11px; font-weight: 700; color: var(--text-2); background: var(--surface-3); padding: 2px 7px; border-radius: 6px; font-variant-numeric: tabular-nums; }
+  .mini-rate { font-size: 11px; font-weight: 700; color: var(--text-2); display: flex; align-items: center; gap: 2px; }
+  .mini-rate b { color: var(--star); }
+  .no-meal-label { font-size: 11.5px; color: var(--muted); margin-top: auto; }
+
+  .loading-overlay {
+    position: absolute; inset: 0; display: none; place-items: center; z-index: 2;
+    background: rgba(255, 255, 255, .6); border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+  .loading .loading-overlay { display: grid; }
+  /* 빙글빙글 도는 로딩 표시 */
+  .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--primary); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- Modal ---------- */
+  /* 창(모달): 평소에는 숨겨져 있다가 .open 이 붙으면 화면 가운데에 뜬다 */
+  .modal {
+    position: fixed; inset: 0; z-index: 100; display: none;
+    align-items: center; justify-content: center; padding: 20px;
+    background: rgba(17, 24, 39, .38);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .modal.open { display: flex; animation: fadeIn .18s ease-out; }
+  .modal-panel {
+    width: 100%; max-width: 420px; max-height: calc(100vh - 40px);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    box-shadow: var(--sh-lg); display: flex; flex-direction: column; overflow: hidden;
+    animation: popIn .22s cubic-bezier(.2, .9, .3, 1.2);
+  }
+  .modal-panel.wide { max-width: 640px; }
+  .modal-panel.mid { max-width: 520px; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes popIn { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+  .modal-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 20px 22px 16px; border-bottom: 1px solid var(--border); background: var(--surface-2);
+  }
+  .modal-head h3 { font-size: 18px; font-weight: 800; letter-spacing: -.4px; }
+  .modal-head p { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .modal-body { padding: 20px 22px 22px; overflow-y: auto; }
+  .modal-close { flex-shrink: 0; }
+
+  /* Tabs */
+  /* 로그인 / 회원가입 탭 */
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; gap: 4px; background: var(--surface-3); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 18px; }
+  .tab { height: 36px; border-radius: 9px; font-weight: 700; font-size: 13px; color: var(--text-2); transition: all .15s; }
+  .tab.active { background: var(--surface); color: var(--text); box-shadow: var(--sh-sm); }
+
+  /* Forms */
+  /* 입력 폼: 입력 칸, 오류 문구(.form-error 는 .show 가 붙어야 보인다), 도움말 */
+  .form { display: flex; flex-direction: column; gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12.5px; font-weight: 700; color: var(--text-2); }
+  .field .opt { font-weight: 500; color: var(--muted); }
+  .input, .textarea {
+    width: 100%; padding: 0 14px; height: 44px;
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: 11px;
+    box-shadow: inset 0 1px 2px rgba(17, 24, 39, .04);
+    transition: border-color .15s, box-shadow .15s; outline: none;
+  }
+  .textarea { height: auto; min-height: 76px; padding: 11px 14px; resize: vertical; line-height: 1.55; }
+  .input:focus, .textarea:focus { border-color: var(--focus); box-shadow: 0 0 0 4px rgba(107, 127, 215, .16); }
+  .input::placeholder, .textarea::placeholder { color: #b3b8c2; }
+  .form-error { display: none; font-size: 12.5px; color: var(--danger); background: var(--danger-bg); border: 1px solid #fbd0d9; padding: 9px 12px; border-radius: 10px; }
+  .form-error.show { display: block; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .help { font-size: 11.5px; color: var(--muted); }
+
+  /* Detail modal */
+  /* 상세 창 제목 아래의 알약 모양 정보(칼로리, 메뉴 수, 평점) */
+  .detail-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--surface); border: 1px solid var(--border); color: var(--text-2); }
+  .pill.star b { color: var(--star); }
+  .pill.danger { background: var(--danger-bg); color: var(--danger); border-color: #fbd0d9; }
+  .section { margin-top: 22px; }
+  .section:first-child { margin-top: 0; }
+  .section-title { font-size: 13px; font-weight: 800; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .section-title .count { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+  /* 상세 창의 노란 공지 상자: 제공되지 않는 메뉴 → 대체 메뉴 */
+  .notice-box { padding: 14px 16px; border-radius: 14px; background: var(--notice-bg); border: 1px solid #f6dcaa; }
+  .notice-box-head { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 800; color: var(--notice); margin-bottom: 10px; }
+  .diff { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: stretch; }
+  .diff-col { background: rgba(255, 255, 255, .75); border: 1px solid #f3e1bd; border-radius: 10px; padding: 10px 12px; }
+  .diff-col .k { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+  .diff-col .v { font-size: 13px; white-space: pre-wrap; word-break: keep-all; }
+  .diff-col.old .v { color: var(--text-2); text-decoration: line-through; text-decoration-color: rgba(225, 29, 72, .45); }
+  .diff-col.new .v { font-weight: 700; }
+  .diff-arrow { display: grid; place-items: center; color: var(--notice); }
+  .notice-reason { margin-top: 10px; font-size: 12.5px; color: #7a4a06; }
+  .notice-reason b { font-weight: 800; }
+
+  /* 상세 창의 메뉴 목록과 알레르기 꼬리표(.atag, 선택한 성분이면 .hit 로 빨갛게) */
+  .menu-list { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .menu-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 14px; border-top: 1px solid var(--border); background: var(--surface); }
+  .menu-row:first-child { border-top: none; }
+  .menu-row:nth-child(even) { background: var(--surface-2); }
+  .menu-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .menu-row.warn .menu-name { color: var(--danger); }
+  .menu-tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+  .atag { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px; background: var(--surface-3); color: var(--text-2); border: 1px solid var(--border); white-space: nowrap; }
+  .atag.hit { background: var(--danger-bg); color: var(--danger); border-color: #fbd0d9; }
+  .empty-block { text-align: center; padding: 28px 16px; color: var(--muted); font-size: 13px; background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: 14px; }
+
+  /* 리뷰: 평균 요약, 목록, 작성 폼, 별점 선택 */
+  .review-summary { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); margin-bottom: 12px; }
+  .review-avg { font-size: 30px; font-weight: 800; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+  .stars { color: #dfe2e7; letter-spacing: 1px; font-size: 15px; white-space: nowrap; }
+  .stars .on { color: var(--star); }
+  .review-list { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 2px; }
+  .review { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--sh-xs); }
+  .review-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .review-user { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; }
+  .review-user .avatar { width: 24px; height: 24px; font-size: 11px; }
+  .review-date { font-size: 11px; color: var(--muted); }
+  .review-text { font-size: 13.5px; color: var(--text-2); word-break: break-all; }
+
+  .review-form { margin-top: 14px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: var(--sh-sm); }
+  .star-picker { display: flex; align-items: center; gap: 2px; }
+  .star-btn { font-size: 28px; line-height: 1; color: #dfe2e7; padding: 2px; transition: transform .1s, color .1s; }
+  .star-btn:hover { transform: scale(1.12); }
+  .star-btn.on { color: var(--star); }
+  .star-label { margin-left: 10px; font-size: 12.5px; font-weight: 700; color: var(--text-2); }
+  .review-input-row { display: flex; gap: 8px; margin-top: 12px; }
+  .review-input-row .input { flex: 1; }
+  .login-prompt { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px dashed var(--border-strong); border-radius: 14px; background: var(--surface-2); font-size: 13px; color: var(--text-2); }
+
+  /* 공지 날짜 강조 / 제외·대체 메뉴 */
+  .day.has-notice { background: var(--notice-bg); border-color: #f6dcaa; }
+  .day.has-notice.today { border-color: var(--primary); }
+  .day-menu li.warn { font-weight: 800; }
+  .day-menu li.removed { text-decoration: line-through; text-decoration-color: rgba(225, 29, 72, .55); color: var(--muted); }
+  .day-menu li.added { color: #9a5300; font-weight: 700; }
+  .day-menu li.added.warn { color: var(--danger); }
+  .menu-row.removed { background: var(--surface-2) !important; }
+  .menu-row.removed .menu-name { text-decoration: line-through; text-decoration-color: rgba(225, 29, 72, .55); color: var(--muted); font-weight: 500; }
+  .menu-row.added { background: #fffaf0 !important; }
+  .menu-row.warn .menu-name { font-weight: 800; }
+  .state-tag { font-size: 10.5px; font-weight: 800; padding: 2px 6px; border-radius: 6px; white-space: nowrap; text-decoration: none; display: inline-block; }
+  .state-tag.removed { background: var(--surface-3); color: var(--muted); border: 1px solid var(--border); }
+  .state-tag.added { background: var(--notice-bg); color: #9a5300; border: 1px solid #f6dcaa; }
+  .diff-col .v ul { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+
+  /* 삭제 버튼 */
+  .btn-del {
+    height: 24px; padding: 0 8px; border-radius: 7px; font-size: 11.5px; font-weight: 700;
+    color: var(--danger); background: var(--danger-bg); border: 1px solid #fbd0d9; transition: background .15s;
+  }
+  .btn-del:hover { background: #ffe1e7; }
+  .btn-del[disabled] { opacity: .55; cursor: not-allowed; }
+  .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid #fbd0d9; height: 32px; font-size: 12.5px; }
+  .btn-danger:hover { background: #ffe1e7; }
+  .review-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .mine-tag { font-size: 10.5px; font-weight: 700; color: var(--text-2); background: var(--surface-3); border: 1px solid var(--border); padding: 1px 6px; border-radius: 6px; }
+
+  /* 관리자 식단 수정 구역 */
+  .admin-box { padding: 16px; border: 1px dashed #efc777; border-radius: 14px; background: #fffdf7; }
+  .check-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+  .check-item {
+    display: flex; align-items: center; gap: 9px; padding: 9px 11px; min-width: 0;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+    cursor: pointer; font-size: 13px; font-weight: 600; transition: background .15s, border-color .15s;
+  }
+  .check-item:hover { border-color: var(--border-strong); }
+  .check-item input { width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--danger); cursor: pointer; }
+  .check-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .check-item.checked { background: var(--danger-bg); border-color: #fbd0d9; }
+  .check-item.checked span { text-decoration: line-through; color: var(--muted); }
+
+  /* 안내 문구 / 마이페이지 / 개인정보 안내 */
+  .disclaimer {
+    display: flex; gap: 8px; align-items: flex-start; padding: 11px 20px;
+    background: #fff8eb; border-bottom: 1px solid #f6dcaa; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    font-size: 12.5px; font-weight: 600; color: #7a4a06; line-height: 1.55;
+  }
+  .source-note { display: inline-block; font-size: 11.5px; font-weight: 700; color: #9a5300; background: var(--notice-bg); border: 1px solid #f6dcaa; padding: 2px 8px; border-radius: 999px; }
+  .source-note[hidden] { display: none; }
+  .loading-overlay { align-content: start; padding-top: 90px; }
+  .loading-box { display: grid; justify-items: center; gap: 12px; }
+  .loading-text { font-size: 13px; font-weight: 700; color: var(--text-2); background: var(--surface); border: 1px solid var(--border); padding: 8px 14px; border-radius: 999px; box-shadow: var(--sh-sm); text-align: center; }
+  .safety-note { font-size: 11px; font-weight: 700; color: #9a5300; }
+  .diff-col .safety-note { margin-top: 6px; }
+  .menu-tags .safety-note { text-align: right; }
+  .auth-user { cursor: pointer; }
+  button.auth-user:hover { background: var(--surface-2); }
+  .field-warn { font-size: 12px; font-weight: 600; color: #9a5300; background: var(--notice-bg); border: 1px solid #f6dcaa; padding: 8px 11px; border-radius: 10px; }
+  .site-footer { max-width: 1320px; margin: 0 auto; padding: 4px 24px 32px; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); }
+  .footer-link { font-size: 12px; font-weight: 700; color: var(--text-2); text-decoration: underline; text-underline-offset: 3px; padding: 4px 6px; border-radius: 6px; }
+  .footer-link:hover { background: var(--surface-3); color: var(--text); }
+  .info-list { display: flex; flex-direction: column; gap: 10px; }
+  .info-item { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+  .info-item dt { font-size: 12px; font-weight: 800; color: var(--text); margin-bottom: 3px; }
+  .info-item dd { font-size: 13px; color: var(--text-2); }
+  .mypage-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .btn-danger.btn-block { height: 44px; font-size: 14px; }
+
+  /* Toast */
+  .toast-wrap { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 300; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+  /* 화면 아래에 잠깐 떴다 사라지는 알림 */
+  .toast {
+    display: flex; align-items: center; gap: 8px;
+    padding: 11px 16px; border-radius: 12px; font-size: 13px; font-weight: 600;
+    background: #111827; color: #fff; box-shadow: var(--sh-lg);
+    animation: toastIn .25s ease-out;
+  }
+  .toast.error { background: var(--danger); }
+  .toast.success::before { content: '✓'; color: #4ade80; font-weight: 800; }
+  .toast.hide { opacity: 0; transform: translateY(6px); transition: all .25s; }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- Responsive ---------- */
+  /* 화면이 좁아지면(태블릿) 사이드바를 달력 위로 올린다 */
+  @media (max-width: 1080px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: static; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  }
+  /* 휴대폰: 날짜 칸에는 숫자·칼로리만 보이고, 메뉴는 칸을 눌러서 본다 */
+  @media (max-width: 720px) {
+    .topbar-inner { padding: 12px 16px; }
+    .brand-text p { display: none; }
+    .app { padding: 16px; gap: 14px; }
+    .cal-head { padding: 14px 16px; }
+    .cal-title h2 { font-size: 20px; }
+    .legend { padding: 8px 16px; }
+    .grid { gap: 4px; padding: 6px 6px 10px; min-height: 300px; }
+    .weekdays { padding: 8px 6px 0; }
+    .day { min-height: 68px; padding: 6px 4px; border-radius: 9px; align-items: center; gap: 4px; }
+    .day-top { flex-direction: column; gap: 3px; }
+    .day-num { width: 24px; height: 24px; font-size: 12.5px; }
+    .day-menu, .no-meal-label, .mini-rate { display: none; }
+    .day-foot { justify-content: center; }
+    .kcal { font-size: 9.5px; padding: 1px 4px; }
+    .notice-badge, .warn-badge { width: 16px; height: 16px; font-size: 9px; }
+    .notice-badge svg { width: 10px; height: 10px; }
+    .auth-user .role-tag { display: none; }
+    .btn { padding: 0 11px; }
+    .diff { grid-template-columns: 1fr; }
+    .diff-arrow { transform: rotate(90deg); }
+    .form-row { grid-template-columns: 1fr; }
+    .modal { padding: 12px; }
+    .modal-head, .modal-body { padding-left: 16px; padding-right: 16px; }
+  }
+  /* 아주 좁은 화면: 글자와 버튼을 조금 더 작게 */
+  @media (max-width: 420px) {
+    .brand-text h1 { font-size: 15px; }
+    .brand-logo { width: 34px; height: 34px; }
+    .authbar .btn { height: 32px; font-size: 12px; padding: 0 9px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= Header ================= -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M8 15h3M13 15h3"/></svg>
+      </div>
+      <div class="brand-text">
+        <h1>급식 캘린더</h1>
+        <p>월간 식단 · 알레르기 필터 · 학생 리뷰 · 변경 공지</p>
+      </div>
+    </div>
+    <!-- 로그인 상태에 따라 자바스크립트(renderAuthbar)가 버튼을 채워 넣는 자리 -->
+    <div class="authbar" id="authbar">
+      <div class="spinner" style="width:20px;height:20px;border-width:2px"></div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= Main ================= -->
+<main class="app">
+  <!-- 왼쪽: 이번 달 요약 / 알레르기 필터 / 변경 공지 목록 -->
+  <aside class="sidebar">
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title">이번 달 요약</div>
+        <span class="card-sub" id="summaryMonth"></span>
+      </div>
+      <div class="card-body">
+        <div class="stats">
+          <div class="stat"><div class="stat-label">급식일</div><div class="stat-value" id="statDays">0<small>일</small></div></div>
+          <div class="stat"><div class="stat-label">평균 칼로리</div><div class="stat-value" id="statKcal">-<small>kcal</small></div></div>
+          <div class="stat"><div class="stat-label">변경 공지</div><div class="stat-value" id="statNotice">0<small>건</small></div></div>
+          <div class="stat"><div class="stat-label">알레르기 주의일</div><div class="stat-value" id="statWarn" style="color:var(--danger)">0<small>일</small></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+          알레르기 필터
+        </div>
+        <button class="link-btn" id="clearAllergy" type="button">초기화</button>
+      </div>
+      <div class="card-body">
+        <div class="chips" id="allergyChips"></div>
+        <p class="filter-hint"><span class="dot danger"></span><span id="allergyHint">선택한 알레르기 성분이 포함된 메뉴를 강조합니다.</span></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          식단 변경 공지
+        </div>
+        <span class="card-sub" id="noticeCount">0건</span>
+      </div>
+      <div class="card-body">
+        <div class="notice-list" id="noticeList"></div>
+      </div>
+    </section>
+  </aside>
+
+  <!-- 오른쪽: 달력 -->
+  <section class="card" id="calendarCard">
+    <!-- 항상 보이는 안내 문구 -->
+    <div class="disclaimer" role="note">
+      <span aria-hidden="true">⚠️</span>
+      <span>이 달력은 학생이 만든 참고용 서비스입니다. 학교 공식 공지가 아니며, 알레르기 정보는 반드시 학교 안내로 다시 확인하세요.</span>
+    </div>
+    <div class="cal-head">
+      <div class="cal-title">
+        <h2 id="calTitle">-</h2>
+        <span id="calSub">월간 급식 식단표</span>
+        <!-- 나이스 대신 meals.csv 를 썼을 때만 보이는 문구 (hidden 을 자바스크립트가 켜고 끈다) -->
+        <span class="source-note" id="sourceNote" hidden>저장된 식단 기준(실시간 아님)</span>
+      </div>
+      <div class="cal-nav">
+        <button class="icon-btn" id="prevMonth" type="button" aria-label="이전 달">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button class="btn btn-outline" id="todayBtn" type="button">오늘</button>
+        <button class="icon-btn" id="nextMonth" type="button" aria-label="다음 달">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="legend-item"><span class="dot today"></span>오늘</span>
+      <span class="legend-item"><span class="notice-badge" style="width:16px;height:16px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/></svg></span>메뉴 변경 공지</span>
+      <span class="legend-item"><span class="dot danger"></span>알레르기 주의 메뉴</span>
+      <span class="legend-item"><span style="color:var(--star)">★</span>평균 평점</span>
+    </div>
+    <div class="weekdays">
+      <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+    </div>
+    <!-- 날짜 칸들은 renderCalendar() 가 만든다. 처음에는 로딩 문구만 들어 있다 -->
+    <div class="grid" id="calendarGrid">
+      <div class="loading-overlay"><div class="loading-box"><div class="spinner"></div><p class="loading-text">서버를 깨우는 중입니다. 최대 1분 걸릴 수 있어요</p></div></div>
+    </div>
+  </section>
+</main>
+
+<!-- 맨 아래: 개인정보 안내 링크 -->
+<footer class="site-footer">
+  <span>학생이 만든 참고용 급식 달력</span>
+  <button class="footer-link" id="privacyLink" type="button">개인정보 안내</button>
+</footer>
+
+<!-- ================= Detail & Review Modal ================= -->
+<div class="modal" id="detailModal" aria-hidden="true">
+  <div class="modal-panel wide" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="detailTitle">-</h3>
+        <div class="detail-meta" id="detailMeta"></div>
+      </div>
+      <button class="icon-btn modal-close" data-close type="button" aria-label="닫기">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <!-- 아래 빈 칸들은 날짜를 누르면 자바스크립트가 채운다: 공지 / 메뉴 / 리뷰 / 관리자 구역 -->
+      <div id="detailNotice"></div>
+      <div class="section">
+        <div class="section-title">오늘의 메뉴</div>
+        <div id="detailMenu"></div>
+      </div>
+      <div class="section">
+        <div class="section-title">학생 리뷰 <span class="count" id="reviewCount"></span></div>
+        <div id="reviewSummary"></div>
+        <div class="review-list" id="reviewList"></div>
+        <div id="reviewFormArea"></div>
+      </div>
+      <div id="adminArea"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= Auth Modal ================= -->
+<div class="modal" id="authModal" aria-hidden="true">
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="authTitle">로그인</h3>
+        <p id="authDesc">계정으로 로그인하고 급식 리뷰를 남겨보세요.</p>
+      </div>
+      <button class="icon-btn modal-close" data-close type="button" aria-label="닫기">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="login" type="button" role="tab">로그인</button>
+        <button class="tab" data-tab="register" type="button" role="tab">회원가입</button>
+      </div>
+
+      <form class="form" id="loginForm" novalidate>
+        <div class="field">
+          <label for="lUser">아이디</label>
+          <input class="input" id="lUser" name="username" autocomplete="username" placeholder="아이디를 입력하세요" required />
+        </div>
+        <div class="field">
+          <label for="lPass">비밀번호</label>
+          <input class="input" id="lPass" name="password" type="password" autocomplete="current-password" placeholder="비밀번호를 입력하세요" required />
+        </div>
+        <div class="form-error" id="loginError"></div>
+        <button class="btn btn-primary btn-block" type="submit" id="loginSubmit">로그인</button>
+      </form>
+
+      <!-- 회원가입 폼. hidden 이라 처음에는 안 보이고, 탭을 누르면 로그인 폼과 바뀐다 -->
+      <form class="form" id="registerForm" novalidate hidden>
+        <div class="field">
+          <label for="rUser">아이디</label>
+          <input class="input" id="rUser" name="username" autocomplete="username" maxlength="20" placeholder="영문/숫자/_ 4~20자" required />
+          <p class="field-warn">실명·학번·전화번호를 아이디로 쓰지 마세요.</p>
+        </div>
+        <div class="field">
+          <label for="rPass">비밀번호</label>
+          <input class="input" id="rPass" name="password" type="password" autocomplete="new-password" placeholder="4자 이상" required />
+        </div>
+        <div class="field">
+          <label for="rPass2">비밀번호 확인</label>
+          <input class="input" id="rPass2" type="password" autocomplete="new-password" placeholder="비밀번호를 한 번 더 입력하세요" required />
+        </div>
+        <div class="form-error" id="registerError"></div>
+        <button class="btn btn-primary btn-block" type="submit" id="registerSubmit">회원가입</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ================= My Page Modal ================= -->
+<div class="modal" id="mypageModal" aria-hidden="true">
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="mypageTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="mypageTitle">마이페이지</h3>
+        <p>내 계정 정보를 확인하고 관리합니다.</p>
+      </div>
+      <button class="icon-btn modal-close" data-close type="button" aria-label="닫기">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <!-- openMypage() 가 아이디와 탈퇴 버튼(관리자는 내보내기 버튼)을 채운다 -->
+    <div class="modal-body" id="mypageBody"></div>
+  </div>
+</div>
+
+<!-- ================= Privacy Modal ================= -->
+<div class="modal" id="privacyModal" aria-hidden="true">
+  <div class="modal-panel mid" role="dialog" aria-modal="true" aria-labelledby="privacyTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="privacyTitle">개인정보 안내</h3>
+        <p>이 서비스가 어떤 정보를 모으고 어떻게 쓰는지 알려드려요.</p>
+      </div>
+      <button class="icon-btn modal-close" data-close type="button" aria-label="닫기">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <dl class="info-list">
+        <div class="info-item"><dt>모으는 정보</dt><dd>아이디, 암호화된 비밀번호, 내가 쓴 리뷰만 저장해요. 이름·학번·전화번호는 받지 않아요.</dd></div>
+        <div class="info-item"><dt>쓰는 곳</dt><dd>로그인할 때와 리뷰를 화면에 보여줄 때만 써요. 리뷰는 다른 사람에게 '익명'으로 보여요.</dd></div>
+        <div class="info-item"><dt>보관 기간</dt><dd>탈퇴하면 바로 지워요.</dd></div>
+        <div class="info-item"><dt>지우는 방법</dt><dd>로그인한 뒤 오른쪽 위 내 아이디를 눌러 마이페이지를 열고 '탈퇴' 버튼을 누르면, 계정과 내가 쓴 리뷰가 모두 지워져요.</dd></div>
+      </dl>
+    </div>
+  </div>
+</div>
+
+<!-- 알림(토스트)이 쌓이는 자리 -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ================= 동작(JavaScript) ================= -->
+<script>
+/* =========================================================
+   API 엔드포인트
+   ========================================================= */
+const API = {
+  user:     '/api/user',      // GET → { logged_in, username, role } / DELETE → 탈퇴
+  login:    '/api/login',     // POST {username, password}
+  register: '/api/register',  // POST {username, password}
+  logout:   '/api/logout',    // POST
+  meals:    '/api/meals',     // GET ?year=YYYY&month=M → [{date, menu, kcal, notice, avg_rating, review_count, source}]
+  reviews:  '/api/reviews',   // GET ?date= / POST {date, rating, comment} / DELETE /api/reviews/<id>
+  notice:   '/api/notice',    // GET ?year=&month= / POST {date, removed_menus, new_menu, reason} / DELETE /api/notice/<date>
+  export:   '/api/export'     // GET (관리자) → zip(users.csv, reviews.csv, notices.csv)
+};
+
+// 알레르기 번호 → 이름 (나이스 표준 1~19번)
+const ALLERGENS = {
+  1: '난류', 2: '우유', 3: '메밀', 4: '땅콩', 5: '대두', 6: '밀', 7: '고등어',
+  8: '게', 9: '새우', 10: '돼지고기', 11: '복숭아', 12: '토마토', 13: '아황산류',
+  14: '호두', 15: '닭고기', 16: '쇠고기', 17: '오징어', 18: '조개류', 19: '잣'
+};
+// 화면에 보여 줄 글자들
+const ROLE_LABEL = { user: '학생', admin: '관리자' };
+const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
+const RATING_TEXT = ['', '별로예요', '아쉬워요', '보통이에요', '맛있어요', '최고예요'];
+const WAKE_TEXT = '서버를 깨우는 중입니다. 최대 1분 걸릴 수 있어요';
+const SUB_NOTE = '대체 메뉴는 알레르기 정보가 없으니 확인 필요';
+
+/* 아이콘은 고정된 문자열이라 innerHTML 로 넣어도 안전하다 (사용자 입력 아님) */
+const ICON_NOTICE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>';
+const ICON_ARROW = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+
+// 화면 전체가 함께 쓰는 상태(state). 값이 바뀌면 render 함수들을 다시 불러 화면을 새로 그린다
+const today = new Date();
+const state = {
+  year: today.getFullYear(),
+  month: today.getMonth() + 1,
+  meals: {},
+  notices: {},
+  reviews: [],
+  source: null,
+  firstLoad: true,
+  user: null,
+  allergies: new Set(loadAllergies()),
+  selectedDate: null,
+  rating: 0,
+  reqId: 0
+};
+
+/* ---------------- Utilities ---------------- */
+// 짧은 도구들: $ = 요소 하나 찾기, pad = 두 자리 맞추기(3 → '03'), keyOf = 'YYYY-MM-DD' 만들기,
+// normName = 이름 비교용(공백 제거·소문자), isAdmin = 지금 관리자로 로그인했는지
+const $ = (s, root = document) => root.querySelector(s);
+const pad = n => String(n).padStart(2, '0');
+const keyOf = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+const todayKey = keyOf(today.getFullYear(), today.getMonth() + 1, today.getDate());
+const normName = s => String(s ?? '').replace(/\s+/g, '').toLowerCase();
+const isAdmin = () => !!(state.user && state.user.isAdmin);
+
+/**
+ * 요소 만들기. 글자는 모두 textContent / 텍스트 노드로 들어가므로
+ * 리뷰·공지·메뉴 내용에 태그가 섞여 있어도 그대로 글자로만 보인다.
+ */
+function h(tag, attrs = {}, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === 'class') node.className = v;
+    else if (k === 'text') node.textContent = v;
+    else node.setAttribute(k, v === true ? '' : v);
+  }
+  kids.flat().forEach(c => { if (c !== null && c !== undefined && c !== false) node.append(c); });
+  return node;
+}
+// 고정 SVG 아이콘을 담은 span 만들기
+function icon(svg, cls) {
+  const s = h('span', { class: cls, 'aria-hidden': 'true' });
+  s.innerHTML = svg;
+  return s;
+}
+// 요소 안을 비우고 새 내용으로 바꾼다 (target 은 '#id' 같은 선택자나 요소)
+function fill(target, ...kids) {
+  const node = typeof target === 'string' ? $(target) : target;
+  node.replaceChildren(...kids.flat().filter(c => c !== null && c !== undefined && c !== false));
+  return node;
+}
+// '20261109' 같은 값을 '2026-11-09' 로
+function toKey(v) {
+  if (!v) return null;
+  const d = String(v).replace(/\D/g, '');
+  return d.length >= 8 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}` : null;
+}
+// '1083 Kcal' → 1083 (숫자만 꺼낸다)
+function parseCal(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = parseFloat(String(v).replace(/[^\d.]/g, ''));
+  return isNaN(n) ? null : n;
+}
+// '2026-11-09' → '2026년 11월 9일 (월)'
+function formatDateKo(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return `${y}년 ${m}월 ${d}일 (${WEEK[new Date(y, m - 1, d).getDay()]})`;
+}
+// 별 5개 중 점수만큼 노랗게 칠한 요소
+function starsEl(score) {
+  const r = Math.round(Number(score) || 0);
+  const wrap = h('span', { class: 'stars', 'aria-label': `${r}점` });
+  for (let i = 1; i <= 5; i++) wrap.append(h('span', { class: i <= r ? 'on' : '', text: '★' }));
+  return wrap;
+}
+// 선택한 알레르기를 브라우저(localStorage)에 저장·불러오기 → 새로고침해도 유지된다. 서버에는 보내지 않는다
+function loadAllergies() {
+  try { return JSON.parse(localStorage.getItem('meal_allergies') || '[]').map(Number).filter(n => ALLERGENS[n]); } catch (e) { return []; }
+}
+function saveAllergies() {
+  try { localStorage.setItem('meal_allergies', JSON.stringify([...state.allergies])); } catch (e) {}
+}
+
+// 서버에 요청을 보내는 공통 함수. 성공이든 실패든 { ok, status, data, headers } 모양으로 돌려준다
+async function api(url, options = {}) {
+  const opts = { credentials: 'same-origin', ...options, headers: { 'Accept': 'application/json', ...(options.headers || {}) } };
+  if (opts.body && typeof opts.body !== 'string') {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(opts.body);
+  }
+  try {
+    const res = await fetch(url, opts);
+    let data = null;
+    const text = await res.text();
+    try { data = text ? JSON.parse(text) : null; } catch (e) { data = { message: '서버 응답을 읽을 수 없습니다.' }; }
+    const ok = res.ok && !(data && (data.success === false || data.ok === false));
+    return { ok, status: res.status, data, headers: res.headers };
+  } catch (err) {
+    return { ok: false, status: 0, data: { message: '서버와 연결할 수 없습니다.' }, headers: new Headers() };
+  }
+}
+// 서버가 보낸 오류 문구가 있으면 그것을, 없으면 기본 문구(fallback)를 쓴다
+const errMsg = (r, fallback) => (r.data && (r.data.message || r.data.error || r.data.msg)) || fallback;
+
+// 화면 아래 알림 띄우기 (2.6초 뒤 사라진다)
+function toast(msg, type = 'success') {
+  const node = h('div', { class: `toast ${type}`, text: msg });
+  $('#toastWrap').appendChild(node);
+  setTimeout(() => { node.classList.add('hide'); setTimeout(() => node.remove(), 300); }, 2600);
+}
+
+/* ---------------- Data normalizers ---------------- */
+/**
+ * '돈까스 (1.2.5.6.)' → { name: '돈까스', codes: [1, 2, 5, 6] }
+ * 괄호 안 번호를 '.' 으로 나눠 숫자로 바꾼 뒤 비교하므로 1 과 13 은 서로 다른 번호로 취급된다.
+ */
+function parseDish(raw) {
+  let s = String(raw ?? '').replace(/<[^>]*>/g, '').replace(/\*/g, '').trim();
+  let codes = [];
+  const m = s.match(/\s*(?:\(\s*((?:\d{1,2}\s*\.?\s*)+)\)|((?:\d{1,2}\.)+\d{0,2}))\s*$/);
+  if (m && m.index > 0) {
+    codes = (m[1] || m[2]).split('.').map(x => parseInt(x.trim(), 10)).filter(n => ALLERGENS[n]);
+    s = s.slice(0, m.index).trim();
+  }
+  return { name: s, codes: [...new Set(codes)] };
+}
+// 메뉴 묶음(배열, 또는 <br>·쉼표로 이어진 글자)을 parseDish 결과 목록으로 바꾼다
+function splitMenu(menu) {
+  if (!menu) return [];
+  let list;
+  if (Array.isArray(menu)) list = menu;
+  else {
+    const str = String(menu);
+    list = /<br\s*\/?>|\n/i.test(str) ? str.split(/<br\s*\/?>|\n/i) : str.split(/,(?![^()]*\))/);
+  }
+  return list.map(parseDish).filter(d => d.name);
+}
+// 서버가 보낸 공지를 화면용 { removed, new_menu, reason } 로 정리한다
+function normalizeNotice(n) {
+  if (!n || typeof n !== 'object') return null;
+  let removed = n.removed_menus ?? n.old_menu ?? [];
+  if (!Array.isArray(removed)) removed = String(removed).split(/,(?![^()]*\))|\n/);
+  removed = removed.map(x => String(x ?? '').trim()).filter(Boolean);
+  const newMenu = String(n.new_menu ?? '').trim();
+  if (!removed.length && !newMenu) return null;
+  return { removed, new_menu: newMenu, reason: String(n.reason ?? '').trim() };
+}
+/** 원본 메뉴 + 공지 → 화면 표시 목록 (removed: 취소선, added: 대체 메뉴) */
+function buildMeal(m) {
+  const original = splitMenu(m.menu ?? m.DDISH_NM ?? '');
+  const notice = normalizeNotice(m.notice);
+  let display = original.map(d => ({ ...d, state: 'normal' }));
+  if (notice) {
+    const removedSet = new Set(notice.removed.map(x => normName(parseDish(x).name)));
+    let lastRemoved = -1;
+    display = display.map((d, i) => {
+      if (removedSet.has(normName(d.name))) { lastRemoved = i; return { ...d, state: 'removed' }; }
+      return d;
+    });
+    const added = splitMenu(notice.new_menu).map(d => ({ ...d, state: 'added' }));
+    if (lastRemoved < 0) display = display.concat(added);
+    else display.splice(lastRemoved + 1, 0, ...added);
+  }
+  return {
+    original,
+    display,
+    dishes: display.filter(d => d.state !== 'removed'),   // 실제 제공되는 메뉴
+    notice,
+    calories: parseCal(m.kcal ?? m.calories ?? m.CAL_INFO),
+    avg: m.avg_rating ?? null,
+    count: m.review_count ?? null
+  };
+}
+// 서버 응답 배열을 { '날짜': 급식 } 모양으로 바꿔서, 날짜로 바로 찾을 수 있게 한다
+function normalizeMeals(data) {
+  const list = Array.isArray(data) ? data : ((data && (data.meals || data.data)) || []);
+  const map = {};
+  list.forEach(m => {
+    const key = toKey(m.date || m.MLSV_YMD);
+    if (key) map[key] = buildMeal(m);
+  });
+  return map;
+}
+// 공지 배열도 { '날짜': 공지 } 모양으로
+function normalizeNotices(data) {
+  const list = Array.isArray(data) ? data : ((data && (data.notices || data.data)) || []);
+  const map = {};
+  list.forEach(n => {
+    const key = toKey(n.date);
+    const notice = normalizeNotice(n);
+    if (key && notice) map[key] = notice;   // 날짜당 1건
+  });
+  return map;
+}
+// 로그인 정보를 { username, name, role, isAdmin } 으로 (로그인 안 했으면 null)
+function normalizeUser(d) {
+  const u = d && (d.user ?? d);
+  if (!u || typeof u !== 'object' || u.logged_in === false || !u.username) return null;
+  const role = String(u.role || 'user').toLowerCase();
+  return { username: u.username, name: u.name || u.username, role, isAdmin: role === 'admin' };
+}
+// 리뷰 배열을 화면에서 쓰기 좋은 이름으로 정리
+function normalizeReviews(data) {
+  const list = Array.isArray(data) ? data : ((data && (data.reviews || data.data)) || []);
+  return list.map(r => ({
+    id: r.id ?? null,
+    isMine: r.is_mine === true,
+    user: r.author || '익명',
+    rating: Number(r.rating ?? 0),
+    comment: r.comment ?? '',
+    created_at: r.created_at || ''
+  }));
+}
+// hitCodes: 이 메뉴의 알레르기 번호 중 사용자가 선택한 것만 고른다 (숫자끼리 비교)
+// getNotice: 그 날짜의 공지 찾기
+const hitCodes = dish => dish.codes.filter(c => state.allergies.has(c));
+const getNotice = key => (state.meals[key] && state.meals[key].notice) || state.notices[key] || null;
+/* 버튼 표시용. 실제 권한 검사는 서버가 한다. */
+const canDeleteReview = rv => !!state.user && rv.id !== null && (state.user.isAdmin || rv.isMine);
+
+/* ---------------- Auth bar ---------------- */
+// 상세 창이 열려 있으면 로그인 상태에 맞게 다시 그린다
+function refreshOpenDetail() {
+  if (!$('#detailModal').classList.contains('open')) return;
+  renderReviewForm();
+  renderReviewList();
+  renderAdminPanel();
+}
+// 서버에 로그인 상태를 물어보고 오른쪽 위 버튼을 다시 그린다
+async function refreshUser() {
+  const r = await api(API.user);
+  state.user = r.ok ? normalizeUser(r.data) : null;
+  renderAuthbar();
+  refreshOpenDetail();
+}
+// 오른쪽 위 그리기: 비로그인(로그인·회원가입) / 학생(아이디·로그아웃) / 관리자(공지 버튼 추가)
+function renderAuthbar() {
+  const u = state.user;
+  if (!u) {
+    return fill('#authbar',
+      h('button', { class: 'btn btn-ghost', type: 'button', 'data-auth': 'login', text: '로그인' }),
+      h('button', { class: 'btn btn-primary', type: 'button', 'data-auth': 'register', text: '회원가입' }));
+  }
+  const chip = h('button', { class: 'auth-user', type: 'button', id: 'mypageBtn', title: '마이페이지 열기' },
+    h('span', { class: u.isAdmin ? 'avatar admin' : 'avatar', text: u.isAdmin ? 'A' : u.name.slice(0, 1) }),
+    h('span', { text: u.isAdmin ? '관리자님' : `${u.name}님` }),
+    h('span', { class: 'role-tag', text: `(${ROLE_LABEL[u.role] || '학생'})` }));
+  if (u.isAdmin) {
+    const noticeBtn = h('button', { class: 'btn btn-notice', type: 'button', id: 'openNoticeBtn' }, icon(ICON_NOTICE), ' 식단 수정 공지');
+    fill('#authbar', chip, noticeBtn, h('button', { class: 'btn btn-ghost', type: 'button', id: 'logoutBtn', text: '로그아웃' }));
+  } else {
+    fill('#authbar', chip, h('button', { class: 'btn btn-outline', type: 'button', id: 'logoutBtn', text: '로그아웃' }));
+  }
+}
+// 로그아웃·탈퇴 뒤 화면을 비로그인 상태로 되돌린다
+function afterSignedOut(message) {
+  state.user = null;
+  renderAuthbar();
+  refreshOpenDetail();
+  toast(message);
+}
+// 오른쪽 위 버튼들의 클릭 처리. 버튼이 매번 새로 그려지므로 바깥 상자에서 한 번에 받는다
+$('#authbar').addEventListener('click', async e => {
+  const authBtn = e.target.closest('[data-auth]');
+  if (authBtn) return openAuth(authBtn.dataset.auth);
+  if (e.target.closest('#mypageBtn')) return openMypage();
+  if (e.target.closest('#openNoticeBtn')) return openAdminEditor(state.selectedDate || todayKey);
+  if (e.target.closest('#logoutBtn')) {
+    await api(API.logout, { method: 'POST' });
+    afterSignedOut('로그아웃되었습니다.');
+  }
+});
+
+/* ---------------- Modals ---------------- */
+// 창 열기·닫기: open 클래스를 붙였다 뗀다
+function openModal(id) {
+  const m = document.getElementById(id);
+  m.classList.add('open');
+  m.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+}
+function closeModal(id) {
+  const m = document.getElementById(id);
+  m.classList.remove('open');
+  m.setAttribute('aria-hidden', 'true');
+  if (!document.querySelector('.modal.open')) document.body.classList.remove('modal-open');
+}
+// 창 바깥의 어두운 곳이나 X 버튼을 누르면 닫는다. Esc 키로는 맨 위에 뜬 창 하나만 닫는다
+document.querySelectorAll('.modal').forEach(m => {
+  m.addEventListener('mousedown', e => { if (e.target === m) closeModal(m.id); });
+  m.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(m.id)));
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const open = [...document.querySelectorAll('.modal.open')];
+  if (open.length) closeModal(open[open.length - 1].id);
+});
+$('#privacyLink').addEventListener('click', () => openModal('privacyModal'));
+
+/* ---------------- Auth modal ---------------- */
+// 로그인 ↔ 회원가입 탭 바꾸기
+function setAuthTab(tab) {
+  document.querySelectorAll('#authModal .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  $('#loginForm').hidden = tab !== 'login';
+  $('#registerForm').hidden = tab !== 'register';
+  $('#authTitle').textContent = tab === 'login' ? '로그인' : '회원가입';
+  $('#authDesc').textContent = tab === 'login' ? '계정으로 로그인하고 급식 리뷰를 남겨보세요.' : '아이디와 비밀번호만 있으면 가입할 수 있어요.';
+  ['#loginError', '#registerError'].forEach(s => $(s).classList.remove('show'));
+  setTimeout(() => $(tab === 'login' ? '#lUser' : '#rUser').focus(), 50);
+}
+function openAuth(tab = 'login') {
+  $('#loginForm').reset();
+  $('#registerForm').reset();
+  openModal('authModal');
+  setAuthTab(tab);
+}
+document.querySelectorAll('#authModal .tab').forEach(t => t.addEventListener('click', () => setAuthTab(t.dataset.tab)));
+
+// showError: 폼 아래 빨간 오류 문구 보이기 / busy: 처리 중에는 버튼을 못 누르게 하고 글자를 바꾼다
+function showError(sel, msg) { const node = $(sel); node.textContent = msg; node.classList.add('show'); }
+function busy(btn, on, label) { btn.disabled = on; if (label) btn.textContent = label; }
+
+// 로그인 버튼
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = $('#lUser').value.trim();
+  const password = $('#lPass').value;
+  if (!username || !password) return showError('#loginError', '아이디와 비밀번호를 모두 입력해주세요.');
+  const btn = $('#loginSubmit');
+  busy(btn, true, '로그인 중...');
+  const r = await api(API.login, { method: 'POST', body: { username, password } });
+  busy(btn, false, '로그인');
+  if (!r.ok) return showError('#loginError', errMsg(r, '아이디 또는 비밀번호가 올바르지 않습니다.'));
+  closeModal('authModal');
+  await refreshUser();
+  toast(isAdmin() ? '관리자로 로그인했습니다.' : `${state.user ? state.user.name : username}님, 환영합니다!`);
+});
+
+// 회원가입 버튼: 브라우저에서 먼저 검사하고(서버도 다시 검사한다), 가입되면 로그인 탭으로 넘긴다
+$('#registerForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const username = $('#rUser').value.trim();
+  const password = $('#rPass').value;
+  const password2 = $('#rPass2').value;
+  if (!username || !password) return showError('#registerError', '모든 항목을 입력해주세요.');
+  if (!/^[A-Za-z0-9_]{4,20}$/.test(username)) return showError('#registerError', '아이디는 영문/숫자/_ 4~20자로 입력해주세요.');
+  if (password.length < 4) return showError('#registerError', '비밀번호는 4자 이상이어야 합니다.');
+  if (password !== password2) return showError('#registerError', '비밀번호가 일치하지 않습니다.');
+  const btn = $('#registerSubmit');
+  busy(btn, true, '가입 중...');
+  const r = await api(API.register, { method: 'POST', body: { username, password } });
+  busy(btn, false, '회원가입');
+  if (!r.ok) return showError('#registerError', errMsg(r, '회원가입에 실패했습니다.'));
+  setAuthTab('login');
+  $('#lUser').value = username;
+  $('#lPass').focus();
+  toast('회원가입이 완료되었습니다. 로그인해주세요.');
+});
+
+/* ---------------- My page: 탈퇴 / 데이터 내보내기 ---------------- */
+// 마이페이지 창 내용 만들기: 학생은 탈퇴 버튼, 관리자는 내보내기 버튼
+function openMypage() {
+  const u = state.user;
+  if (!u) return openAuth('login');
+  const info = h('dl', { class: 'info-list' },
+    h('div', { class: 'info-item' }, h('dt', { text: '아이디' }), h('dd', { text: u.username })),
+    h('div', { class: 'info-item' }, h('dt', { text: '구분' }), h('dd', { text: ROLE_LABEL[u.role] || '학생' })));
+  const actions = h('div', { class: 'mypage-actions' });
+  if (u.isAdmin) {
+    actions.append(
+      exportButton('btn btn-outline btn-block'),
+      h('p', { class: 'help', text: '회원(비밀번호 제외)·리뷰·공지를 CSV 파일로 묶어 내려받습니다. 관리자 계정은 탈퇴할 수 없습니다.' }));
+  } else {
+    const btn = h('button', { class: 'btn btn-danger btn-block', type: 'button', text: '탈퇴' });
+    btn.addEventListener('click', () => withdraw(btn));
+    actions.append(btn, h('p', { class: 'help', text: '탈퇴하면 계정과 내가 쓴 리뷰가 바로 모두 지워지며 되돌릴 수 없습니다.' }));
+  }
+  fill('#mypageBody', info, actions);
+  openModal('mypageModal');
+}
+
+// 탈퇴: 확인 → DELETE /api/user → 화면을 비로그인 상태로
+async function withdraw(btn) {
+  if (!confirm('정말 탈퇴하시겠습니까?\n계정과 내가 쓴 리뷰가 모두 삭제되며 되돌릴 수 없습니다.')) return;
+  busy(btn, true, '탈퇴 처리 중...');
+  const r = await api(API.user, { method: 'DELETE' });
+  busy(btn, false, '탈퇴');
+  if (!r.ok) return toast(errMsg(r, '탈퇴에 실패했습니다.'), 'error');
+  closeModal('mypageModal');
+  afterSignedOut('탈퇴가 완료되었습니다. 계정과 리뷰가 삭제되었습니다.');
+  await loadMonth();   // 내 리뷰가 빠진 평점으로 달력 갱신
+  if ($('#detailModal').classList.contains('open')) loadReviews(state.selectedDate);
+}
+
+// '데이터 내보내기' 버튼 만들기
+function exportButton(cls) {
+  const btn = h('button', { class: cls, type: 'button', text: '데이터 내보내기' });
+  btn.addEventListener('click', () => exportData(btn));
+  return btn;
+}
+// 서버에서 zip 을 받아, 보이지 않는 링크를 눌러 주는 방식으로 파일로 저장한다
+async function exportData(btn) {
+  busy(btn, true, '내보내는 중...');
+  try {
+    const res = await fetch(API.export, { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(res.status === 403 ? '관리자만 사용할 수 있습니다.' : '내보내기에 실패했습니다.');
+    const blob = await res.blob();
+    const name = (res.headers.get('Content-Disposition') || '').match(/filename="?([^";]+)"?/);
+    const link = h('a', { href: URL.createObjectURL(blob), download: name ? name[1] : 'school_meal_export.zip' });
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    toast('데이터를 내려받았습니다.');
+  } catch (err) {
+    toast(err.message || '내보내기에 실패했습니다.', 'error');
+  }
+  busy(btn, false, '데이터 내보내기');
+}
+
+/* ---------------- Allergy filter ---------------- */
+// 알레르기 버튼 19개 그리기
+function renderChips() {
+  fill('#allergyChips', Object.entries(ALLERGENS).map(([no, name]) => {
+    const on = state.allergies.has(Number(no));
+    return h('button', { type: 'button', class: on ? 'chip active' : 'chip', 'data-code': no, 'aria-pressed': String(on) },
+      h('span', { class: 'no', text: no }), name);
+  }));
+  const n = state.allergies.size;
+  $('#allergyHint').textContent = n
+    ? `${n}개 성분 선택됨 · 포함된 메뉴를 빨간색으로 강조합니다.`
+    : '선택한 알레르기 성분이 포함된 메뉴를 강조합니다.';
+}
+// 선택이 바뀌면 저장하고 달력·상세 창을 다시 그린다
+function onAllergyChange() {
+  saveAllergies();
+  renderChips();
+  renderCalendar();
+  if ($('#detailModal').classList.contains('open')) renderDetailMenu();
+}
+$('#allergyChips').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  const code = Number(chip.dataset.code);
+  state.allergies.has(code) ? state.allergies.delete(code) : state.allergies.add(code);
+  onAllergyChange();
+});
+$('#clearAllergy').addEventListener('click', () => {
+  state.allergies.clear();
+  onAllergyChange();
+});
+
+/* ---------------- Calendar ---------------- */
+// 한 달치 급식과 공지를 서버에서 받아 온다
+// reqId 는 달을 빠르게 넘길 때, 늦게 도착한 예전 달의 응답을 버리기 위한 번호
+async function loadMonth() {
+  const id = ++state.reqId;
+  const { year, month } = state;
+  $('#calendarCard').classList.add('loading');
+  renderCalendar();
+  const q = `?year=${year}&month=${month}`;
+  const [mealsRes, noticeRes] = await Promise.all([api(API.meals + q), api(API.notice + q)]);
+  if (id !== state.reqId) return;
+  state.meals = mealsRes.ok ? normalizeMeals(mealsRes.data) : {};
+  state.notices = noticeRes.ok ? normalizeNotices(noticeRes.data) : {};
+  state.source = mealsRes.ok
+    ? (mealsRes.headers.get('X-Meal-Source') || (Array.isArray(mealsRes.data) && mealsRes.data[0] && mealsRes.data[0].source) || null)
+    : null;
+  state.firstLoad = false;
+  if (!mealsRes.ok) toast(errMsg(mealsRes, '급식 정보를 불러오지 못했습니다.'), 'error');
+  $('#calendarCard').classList.remove('loading');
+  $('#sourceNote').hidden = state.source !== 'csv';
+  renderCalendar();
+  renderNoticeList();
+}
+
+// 날짜 한 칸 만들기 (칸 요소와, 요약 숫자 계산에 쓸 값들을 함께 돌려준다)
+function dayCell(key, d, weekday) {
+  const meal = state.meals[key];
+  const notice = getNotice(key);
+  const cls = ['day'];
+  if (weekday === 0) cls.push('sun');
+  if (weekday === 6) cls.push('sat');
+  if (key === todayKey) cls.push('today');
+  if (notice) cls.push('has-notice');
+
+  const hasMeal = !!(meal && meal.display.length);
+  const danger = hasMeal && meal.dishes.some(dish => hitCodes(dish).length);
+  if (!hasMeal) cls.push('no-meal');
+  if (danger) cls.push('danger');
+
+  const icons = h('span', { class: 'day-icons' });
+  if (notice) icons.append(Object.assign(icon(ICON_NOTICE, 'notice-badge'), { title: '메뉴 변경 공지' }));
+  if (danger) icons.append(h('span', { class: 'warn-badge', title: '알레르기 주의', text: '!' }));
+
+  const cell = h('div', { class: cls.join(' '), 'data-date': key, role: 'button', tabindex: '0', 'aria-label': `${formatDateKo(key)} 급식 상세 보기` },
+    h('div', { class: 'day-top' }, h('span', { class: 'day-num', text: String(d) }), icons));
+
+  if (!hasMeal) {
+    cell.append(h('span', { class: 'no-meal-label', text: '급식 없음' }));
+    return { cell, hasMeal, danger, calories: null };
+  }
+  const MAX = 5;
+  const list = h('ul', { class: 'day-menu' }, meal.display.slice(0, MAX).map(dish => {
+    const hit = dish.state !== 'removed' && hitCodes(dish).length > 0;
+    const c = [dish.state !== 'normal' ? dish.state : '', hit ? 'warn' : ''].filter(Boolean).join(' ');
+    return h('li', { class: c, title: dish.name, text: dish.state === 'added' ? `↳ ${dish.name}` : dish.name });
+  }));
+  if (meal.display.length > MAX) list.append(h('li', { class: 'more', text: `+${meal.display.length - MAX}개 더보기` }));
+
+  const foot = h('div', { class: 'day-foot' },
+    meal.calories ? h('span', { class: 'kcal', text: `${Math.round(meal.calories)} kcal` }) : h('span'),
+    Number(meal.avg) > 0 ? h('span', { class: 'mini-rate' }, h('b', { text: '★' }), Number(meal.avg).toFixed(1)) : h('span'));
+  cell.append(list, foot);
+  return { cell, hasMeal, danger, calories: meal.calories };
+}
+
+// 달력 전체와 왼쪽 요약 숫자 그리기
+function renderCalendar() {
+  const { year, month } = state;
+  $('#calTitle').textContent = `${year}. ${pad(month)}`;
+  $('#summaryMonth').textContent = `${year}년 ${month}월`;
+
+  const first = new Date(year, month - 1, 1).getDay();
+  const last = new Date(year, month, 0).getDate();
+  const empty = () => h('div', { class: 'day empty', 'aria-hidden': 'true' });
+  const cells = [];
+  for (let i = 0; i < first; i++) cells.push(empty());
+
+  let mealDays = 0, kcalSum = 0, kcalCnt = 0, warnDays = 0;
+  for (let d = 1; d <= last; d++) {
+    const r = dayCell(keyOf(year, month, d), d, (first + d - 1) % 7);
+    if (r.hasMeal) mealDays++;
+    if (r.calories) { kcalSum += r.calories; kcalCnt++; }
+    if (r.danger) warnDays++;
+    cells.push(r.cell);
+  }
+  while (cells.length % 7) cells.push(empty());
+
+  const overlay = h('div', { class: 'loading-overlay' },
+    h('div', { class: 'loading-box' }, h('div', { class: 'spinner' }),
+      state.firstLoad ? h('p', { class: 'loading-text', text: WAKE_TEXT }) : null));
+  fill('#calendarGrid', overlay, cells);
+
+  const stat = (sel, value, unit) => fill(sel, String(value), h('small', { text: unit }));
+  stat('#statDays', mealDays, '일');
+  stat('#statKcal', kcalCnt ? Math.round(kcalSum / kcalCnt) : '-', 'kcal');
+  stat('#statNotice', Object.keys(state.notices).length, '건');
+  stat('#statWarn', warnDays, '일');
+}
+
+// 왼쪽 '식단 변경 공지' 목록 그리기
+function renderNoticeList() {
+  const entries = Object.entries(state.notices).sort(([a], [b]) => a.localeCompare(b));
+  $('#noticeCount').textContent = `${entries.length}건`;
+  if (!entries.length) return fill('#noticeList', h('div', { class: 'empty-mini', text: '이번 달 등록된 변경 공지가 없습니다.' }));
+  fill('#noticeList', entries.map(([key, n]) => {
+    const [y, m, d] = key.split('-').map(Number);
+    const removed = n.removed.map(x => parseDish(x).name).join(', ') || '-';
+    const added = splitMenu(n.new_menu).map(x => x.name).join(', ') || '-';
+    return h('button', { type: 'button', class: 'notice-item', 'data-date': key },
+      h('div', { class: 'n-date', text: `${m}월 ${d}일 (${WEEK[new Date(y, m - 1, d).getDay()]})` }),
+      h('div', { class: 'n-body' }, h('s', { text: removed }), ' → ', h('b', { text: added })));
+  }));
+}
+$('#noticeList').addEventListener('click', e => {
+  const it = e.target.closest('.notice-item');
+  if (it) openDetail(it.dataset.date);
+});
+
+// 날짜 칸을 누르면(또는 Enter·스페이스) 상세 창을 연다
+const grid = $('#calendarGrid');
+grid.addEventListener('click', e => {
+  const cell = e.target.closest('.day[data-date]');
+  if (cell) openDetail(cell.dataset.date);
+});
+grid.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const cell = e.target.closest('.day[data-date]');
+  if (cell) { e.preventDefault(); openDetail(cell.dataset.date); }
+});
+
+// 이전·다음 달로 이동 (12월 다음은 다음 해 1월)
+function moveMonth(diff) {
+  let m = state.month + diff, y = state.year;
+  if (m < 1) { m = 12; y--; }
+  if (m > 12) { m = 1; y++; }
+  state.year = y; state.month = m;
+  loadMonth();
+}
+$('#prevMonth').addEventListener('click', () => moveMonth(-1));
+$('#nextMonth').addEventListener('click', () => moveMonth(1));
+$('#todayBtn').addEventListener('click', () => {
+  state.year = today.getFullYear(); state.month = today.getMonth() + 1;
+  loadMonth();
+});
+
+/* ---------------- Detail & Review modal ---------------- */
+// 날짜 상세 창 열기: 공지·메뉴는 바로 그리고, 리뷰는 서버에서 받아 온다
+function openDetail(key) {
+  state.selectedDate = key;
+  state.rating = 0;
+  state.reviews = [];
+  state._reviewStats = null;
+  $('#detailTitle').textContent = formatDateKo(key);
+  renderDetailNotice();
+  renderDetailMenu();
+  fill('#reviewSummary');
+  $('#reviewCount').textContent = '';
+  fill('#reviewList', h('div', { class: 'empty-block' }, h('div', { class: 'spinner', style: 'margin:0 auto' })));
+  renderReviewForm();
+  renderAdminPanel();
+  openModal('detailModal');
+  $('#detailModal .modal-body').scrollTop = 0;
+  loadReviews(key);
+}
+
+// (관리자) 위쪽 '식단 수정 공지' 버튼: 그 날짜 상세 창을 열고 관리자 구역까지 스크롤한다
+async function openAdminEditor(key) {
+  if (!isAdmin()) return toast('관리자만 이용할 수 있습니다.', 'error');
+  const [y, m] = key.split('-').map(Number);
+  if (y !== state.year || m !== state.month) {
+    state.year = y; state.month = m;
+    await loadMonth();
+  }
+  openDetail(key);
+  setTimeout(() => $('#adminArea').scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+}
+
+// 상세 창 제목 아래의 알약 모양 정보 그리기
+function renderDetailMeta() {
+  const key = state.selectedDate;
+  const meal = state.meals[key];
+  const stats = state._reviewStats && state._reviewStats.key === key ? state._reviewStats : null;
+  const pills = [];
+  if (meal && meal.calories) pills.push(h('span', { class: 'pill', text: `🔥 ${meal.calories.toLocaleString()} kcal` }));
+  if (meal && meal.dishes.length) pills.push(h('span', { class: 'pill', text: `🍱 ${meal.dishes.length}가지 메뉴` }));
+  if (stats && stats.count) pills.push(h('span', { class: 'pill star' }, h('b', { text: '★' }), ` ${stats.avg.toFixed(1)} · ${stats.count}명`));
+  const warn = meal ? meal.dishes.filter(d => hitCodes(d).length).length : 0;
+  if (warn) pills.push(h('span', { class: 'pill danger', text: `⚠ 알레르기 주의 ${warn}개` }));
+  if (getNotice(key)) pills.push(h('span', { class: 'pill', style: 'color:var(--notice);border-color:#f6dcaa;background:var(--notice-bg)' }, icon(ICON_NOTICE), ' 메뉴 변경'));
+  fill('#detailMeta', pills);
+}
+
+// 상세 창의 노란 공지 상자 그리기
+function renderDetailNotice() {
+  const n = getNotice(state.selectedDate);
+  if (!n) return fill('#detailNotice');
+  const list = arr => arr.length ? h('ul', {}, arr.map(x => h('li', { text: x }))) : '-';
+  const removed = n.removed.map(x => parseDish(x).name);
+  const added = splitMenu(n.new_menu).map(d => d.name);
+  fill('#detailNotice',
+    h('div', { class: 'section' },
+      h('div', { class: 'notice-box' },
+        h('div', { class: 'notice-box-head' }, icon(ICON_NOTICE), ' 식단 변경 공지'),
+        h('div', { class: 'diff' },
+          h('div', { class: 'diff-col old' }, h('div', { class: 'k', text: '제공되지 않는 메뉴' }), h('div', { class: 'v' }, list(removed))),
+          icon(ICON_ARROW, 'diff-arrow'),
+          h('div', { class: 'diff-col new' }, h('div', { class: 'k', text: '대체 메뉴' }), h('div', { class: 'v' }, list(added)),
+            added.length ? h('div', { class: 'safety-note', text: `※ ${SUB_NOTE}` }) : null)),
+        n.reason ? h('div', { class: 'notice-reason' }, h('b', { text: '사유' }), ` · ${n.reason}`) : null)));
+}
+
+// 상세 창의 메뉴 목록 그리기 (빠진 메뉴는 취소선, 대체 메뉴는 표시와 안내 문구)
+function renderDetailMenu() {
+  const meal = state.meals[state.selectedDate];
+  if (!meal || !meal.display.length) {
+    fill('#detailMenu', h('div', { class: 'empty-block', text: '이 날짜에 등록된 급식 정보가 없습니다.' }));
+  } else {
+    fill('#detailMenu', h('div', { class: 'menu-list' }, meal.display.map(d => {
+      const removed = d.state === 'removed';
+      const added = d.state === 'added';
+      const hits = removed ? [] : hitCodes(d);
+      const name = h('div', { class: 'menu-name' }, hits.length ? '⚠️' : null, h('span', { text: d.name }),
+        removed ? h('span', { class: 'state-tag removed', text: '제공 안 함' }) : null,
+        added ? h('span', { class: 'state-tag added', text: '대체 메뉴' }) : null);
+      const tags = h('div', { class: 'menu-tags' },
+        removed ? null : d.codes.map(c => h('span', { class: state.allergies.has(c) ? 'atag hit' : 'atag', text: ALLERGENS[c] })),
+        added ? h('span', { class: 'safety-note', text: SUB_NOTE }) : null);
+      const cls = ['menu-row', d.state !== 'normal' ? d.state : '', hits.length ? 'warn' : ''].filter(Boolean).join(' ');
+      return h('div', { class: cls }, name, tags);
+    })));
+  }
+  renderDetailMeta();
+}
+
+/* ---------------- Reviews ---------------- */
+// 그 날짜의 리뷰를 받아 평균을 계산하고, 리뷰 목록과 달력의 평점을 갱신한다
+async function loadReviews(key) {
+  const r = await api(`${API.reviews}?date=${encodeURIComponent(key)}`);
+  if (key !== state.selectedDate) return;
+  if (!r.ok) return fill('#reviewList', h('div', { class: 'empty-block', text: errMsg(r, '리뷰를 불러오지 못했습니다.') }));
+  state.reviews = normalizeReviews(r.data);
+  const count = state.reviews.length;
+  const avg = count ? state.reviews.reduce((a, b) => a + b.rating, 0) / count : 0;
+  state._reviewStats = { key, count, avg };
+
+  if (state.meals[key]) { state.meals[key].avg = count ? avg : null; state.meals[key].count = count; }
+  renderCalendar();   // 달력 평점 즉시 갱신
+  renderDetailMeta();
+  renderReviewList();
+}
+
+// 리뷰 목록 그리기 ([삭제] 버튼은 내 글이거나 관리자일 때만 보인다)
+function renderReviewList() {
+  const stats = state._reviewStats && state._reviewStats.key === state.selectedDate ? state._reviewStats : { count: 0, avg: 0 };
+  $('#reviewCount').textContent = stats.count ? `${stats.count}개` : '';
+  fill('#reviewSummary', stats.count ? h('div', { class: 'review-summary' },
+    h('div', { class: 'review-avg', text: stats.avg.toFixed(1) }),
+    h('div', {}, starsEl(stats.avg), h('div', { class: 'card-sub', text: `${stats.count}명의 학생이 평가했어요` }))) : null);
+
+  if (!state.reviews.length) {
+    return fill('#reviewList', h('div', { class: 'empty-block', text: '아직 등록된 리뷰가 없어요. 첫 리뷰를 남겨보세요!' }));
+  }
+  fill('#reviewList', state.reviews.map(rv =>
+    h('div', { class: 'review' },
+      h('div', { class: 'review-top' },
+        h('div', { class: 'review-user' },
+          h('span', { class: 'avatar', text: String(rv.user).slice(0, 1) }),
+          h('span', { text: rv.user }), starsEl(rv.rating),
+          rv.isMine ? h('span', { class: 'mine-tag', text: '내 평가' }) : null),
+        h('div', { class: 'review-actions' },
+          rv.created_at ? h('span', { class: 'review-date', text: String(rv.created_at).slice(0, 16).replace('T', ' ') }) : null,
+          canDeleteReview(rv) ? h('button', { type: 'button', class: 'btn-del', 'data-review-id': String(rv.id), text: '삭제' }) : null)),
+      h('div', { class: 'review-text', text: rv.comment }))));   // 리뷰 내용은 textContent 로만 넣는다
+}
+
+// 리뷰 [삭제] 버튼
+$('#reviewList').addEventListener('click', async e => {
+  const btn = e.target.closest('.btn-del[data-review-id]');
+  if (!btn) return;
+  if (!confirm('정말 이 평가를 삭제하시겠습니까?')) return;
+  const key = state.selectedDate;
+  busy(btn, true, '삭제 중');
+  const r = await api(`${API.reviews}/${encodeURIComponent(btn.dataset.reviewId)}`, { method: 'DELETE' });
+  if (!r.ok) {
+    busy(btn, false, '삭제');
+    if (r.status === 401) { toast('로그인이 필요합니다.', 'error'); await refreshUser(); return openAuth('login'); }
+    return toast(errMsg(r, '리뷰 삭제에 실패했습니다.'), 'error');
+  }
+  toast('평가가 삭제되었습니다.');
+  await loadReviews(key);
+});
+
+// 리뷰 작성 폼 그리기 (로그인하지 않았으면 로그인 안내를 대신 보여 준다)
+function renderReviewForm() {
+  if (!state.user) {
+    const loginBtn = h('button', { class: 'btn btn-primary', type: 'button', text: '로그인' });
+    loginBtn.addEventListener('click', () => openAuth('login'));
+    return fill('#reviewFormArea', h('div', { class: 'login-prompt' },
+      h('span', { text: '로그인한 학생만 별점과 한 줄 평을 남길 수 있어요.' }), loginBtn));
+  }
+  const label = h('span', { class: 'star-label', text: '별점을 선택하세요' });
+  const stars = [1, 2, 3, 4, 5].map(i => h('button', { type: 'button', class: 'star-btn', 'data-v': String(i), 'aria-label': `${i}점`, text: '★' }));
+  const picker = h('div', { class: 'star-picker' }, stars, label);
+  const paint = v => {
+    stars.forEach(b => b.classList.toggle('on', Number(b.dataset.v) <= v));
+    label.textContent = v ? `${v}점 · ${RATING_TEXT[v]}` : '별점을 선택하세요';
+  };
+  picker.addEventListener('click', e => {
+    const b = e.target.closest('.star-btn');
+    if (b) { state.rating = Number(b.dataset.v); paint(state.rating); }
+  });
+  picker.addEventListener('mouseover', e => { const b = e.target.closest('.star-btn'); if (b) paint(Number(b.dataset.v)); });
+  picker.addEventListener('mouseleave', () => paint(state.rating));
+  paint(state.rating);
+
+  const form = h('form', { class: 'review-form', id: 'reviewForm', novalidate: true },
+    h('div', { class: 'section-title', style: 'margin-bottom:6px', text: '나의 평가 남기기' }),
+    picker,
+    h('div', { class: 'review-input-row' },
+      h('input', { class: 'input', id: 'reviewText', maxlength: '100', placeholder: '오늘 급식 한 줄 평을 남겨주세요 (최대 100자)' }),
+      h('button', { class: 'btn btn-primary', type: 'submit', id: 'reviewSubmit', style: 'height:44px', text: '등록' })),
+    h('p', { class: 'help', style: 'margin-top:8px', text: '리뷰는 익명으로 표시됩니다. 이름·연락처 같은 개인정보는 쓰지 마세요.' }));
+  form.addEventListener('submit', submitReview);
+  fill('#reviewFormArea', form);
+}
+
+// 리뷰 등록
+async function submitReview(e) {
+  e.preventDefault();
+  const comment = $('#reviewText').value.trim();
+  if (!state.rating) return toast('별점을 선택해주세요.', 'error');
+  if (!comment) return toast('한 줄 평을 입력해주세요.', 'error');
+  const btn = $('#reviewSubmit');
+  busy(btn, true, '등록 중');
+  const key = state.selectedDate;
+  const r = await api(API.reviews, { method: 'POST', body: { date: key, rating: state.rating, comment } });
+  busy(btn, false, '등록');
+  if (!r.ok) {
+    if (r.status === 401) { toast('로그인이 필요합니다.', 'error'); await refreshUser(); return openAuth('login'); }
+    return toast(errMsg(r, '리뷰 등록에 실패했습니다.'), 'error');
+  }
+  toast('리뷰가 등록되었습니다.');
+  state.rating = 0;
+  renderReviewForm();
+  loadReviews(key);
+}
+
+/* ---------------- Admin: 식단 수정 공지 (체크박스) ---------------- */
+// (관리자) 식단 수정 공지 폼 그리기. 관리자가 아니면 비워 둔다
+// 화면에서 숨기는 것일 뿐이고, 실제로 막는 일은 서버가 한다
+function renderAdminPanel() {
+  if (!isAdmin() || !state.selectedDate) return fill('#adminArea');
+  const key = state.selectedDate;
+  const meal = state.meals[key];
+  const notice = getNotice(key);
+  const original = meal ? meal.original : [];
+  const removedSet = new Set(notice ? notice.removed.map(x => normName(parseDish(x).name)) : []);
+
+  const checks = original.length
+    ? h('div', { class: 'check-list' }, original.map(d => {
+        const on = removedSet.has(normName(d.name));
+        const input = h('input', { type: 'checkbox', name: 'removed', value: d.name, checked: on });
+        const item = h('label', { class: on ? 'check-item checked' : 'check-item', title: d.name }, input, h('span', { text: d.name }));
+        input.addEventListener('change', () => item.classList.toggle('checked', input.checked));
+        return item;
+      }))
+    : h('div', { class: 'empty-mini', text: '이 날짜의 급식 정보가 없어 제외할 메뉴가 없습니다. 대체 메뉴만 입력할 수 있어요.' });
+
+  const newInput = h('input', { class: 'input', id: 'aNew', maxlength: '300', placeholder: '예) 치킨까스' });
+  const reasonInput = h('textarea', { class: 'textarea', id: 'aReason', maxlength: '300', placeholder: '예) 식재료 수급 문제로 인한 메뉴 변경' });
+  newInput.value = notice ? notice.new_menu : '';
+  reasonInput.value = notice ? notice.reason : '';
+
+  const form = h('form', { class: 'admin-box form', id: 'adminNoticeForm', novalidate: true },
+    h('div', { class: 'field' },
+      h('label', {}, '제공되지 않는 메뉴 ', h('span', { class: 'opt', text: '(체크한 메뉴에 취소선이 표시됩니다)' })), checks),
+    h('div', { class: 'field' },
+      h('label', { for: 'aNew' }, '대체 메뉴 ', h('span', { class: 'opt', text: '(여러 개는 쉼표로 구분)' })), newInput,
+      h('p', { class: 'safety-note', text: `※ 화면에 "${SUB_NOTE}" 문구가 자동으로 붙습니다.` })),
+    h('div', { class: 'field' }, h('label', { for: 'aReason', text: '변경 사유' }), reasonInput),
+    h('div', { class: 'form-error', id: 'adminNoticeError' }),
+    h('button', { class: 'btn btn-primary btn-block', type: 'submit', id: 'adminNoticeSubmit', text: notice ? '공지 수정하기' : '공지 등록하기' }));
+  form.addEventListener('submit', submitNotice);
+
+  const tools = h('span', { style: 'display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end' }, exportButton('btn btn-outline'));
+  tools.firstChild.style.height = '32px';
+  if (notice) {
+    const del = h('button', { type: 'button', class: 'btn btn-danger', id: 'deleteNoticeBtn', text: '🗑️ 등록된 공지 삭제' });
+    del.addEventListener('click', deleteNotice);
+    tools.append(del);
+  }
+  fill('#adminArea', h('div', { class: 'section' },
+    h('div', { class: 'section-title' }, h('span', { text: '🛠️ 관리자 · 식단 수정 공지' }), tools), form));
+}
+
+// 공지를 저장·삭제한 뒤 달력과 상세 창을 새 데이터로 다시 그린다
+async function afterNoticeChange(key) {
+  await loadMonth();   // 달력/공지 데이터를 서버에서 다시 불러와 반영
+  if ($('#detailModal').classList.contains('open') && state.selectedDate === key) {
+    renderDetailNotice();
+    renderDetailMenu();
+    renderAdminPanel();
+  }
+}
+
+// 공지 저장: 체크한 메뉴, 대체 메뉴, 사유를 서버로 보낸다
+async function submitNotice(e) {
+  e.preventDefault();
+  const key = state.selectedDate;
+  const body = {
+    date: key,
+    removed_menus: [...document.querySelectorAll('#adminNoticeForm input[name="removed"]:checked')].map(i => i.value),
+    new_menu: $('#aNew').value.trim(),
+    reason: $('#aReason').value.trim()
+  };
+  $('#adminNoticeError').classList.remove('show');
+  if (!body.removed_menus.length && !body.new_menu) return showError('#adminNoticeError', '제공되지 않는 메뉴를 선택하거나 대체 메뉴를 입력해주세요.');
+  if (!body.reason) return showError('#adminNoticeError', '변경 사유를 입력해주세요.');
+  const btn = $('#adminNoticeSubmit');
+  const label = btn.textContent;
+  busy(btn, true, '저장 중...');
+  const r = await api(API.notice, { method: 'POST', body });
+  busy(btn, false, label);
+  if (!r.ok) {
+    if (r.status === 401 || r.status === 403) return showError('#adminNoticeError', '관리자 권한이 필요합니다. 다시 로그인해주세요.');
+    return showError('#adminNoticeError', errMsg(r, '공지 저장에 실패했습니다.'));
+  }
+  toast(errMsg(r, '식단 변경 공지가 저장되었습니다.'));
+  await afterNoticeChange(key);
+}
+
+// 공지 삭제
+async function deleteNotice() {
+  const key = state.selectedDate;
+  if (!confirm(`${formatDateKo(key)}에 등록된 식단 변경 공지를 삭제하시겠습니까?`)) return;
+  const btn = $('#deleteNoticeBtn');
+  busy(btn, true, '삭제 중...');
+  const r = await api(`${API.notice}/${encodeURIComponent(key)}`, { method: 'DELETE' });
+  if (!r.ok) {
+    busy(btn, false, '🗑️ 등록된 공지 삭제');
+    if (r.status === 401 || r.status === 403) return toast('관리자 권한이 필요합니다.', 'error');
+    return toast(errMsg(r, '공지 삭제에 실패했습니다.'), 'error');
+  }
+  toast('공지가 삭제되어 원래 식단으로 복원되었습니다.');
+  await afterNoticeChange(key);
+}
+
+/* ---------------- Init ---------------- */
+// 페이지가 열리면: 알레르기 버튼 그리기 → 로그인 상태 확인 → 이번 달 불러오기
+renderChips();
+refreshUser();
+loadMonth();
+</script>
+</body>
+</html>
