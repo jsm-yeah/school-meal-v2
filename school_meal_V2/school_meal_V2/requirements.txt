@@ -1,6 +1,0 @@
-# Render 가 배포할 때 'pip install -r requirements.txt' 로 설치하는 목록
-flask            # 웹 서버
-pandas           # (현재 app.py 에서는 쓰지 않음. 빌드를 빠르게 하려면 이 줄을 지워도 된다)
-requests         # 나이스 API 요청
-psycopg2-binary  # Postgres 연결 (DATABASE_URL 이 있을 때만 사용)
-gunicorn         # Render 에서 서버를 실행하는 프로그램 (Start Command: gunicorn app:app)
